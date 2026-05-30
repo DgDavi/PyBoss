@@ -1,7 +1,7 @@
 from google import genai
 from google.genai import types
 import json
-from client.config import GEMINI_KEY
+from config import GEMINI_KEY
 
 client = genai.Client(api_key=GEMINI_KEY)
 

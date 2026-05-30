@@ -1,1 +1,0 @@
-from config import GEMINI_KEY

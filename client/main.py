@@ -1,124 +1,167 @@
 import pygame
 import sys
+import math
 
 # === Inicialização ===
 pygame.init()
-pygame.font.init()  # Garante que o módulo de texto foi carregado
+pygame.font.init()
 
 # === Configurações da Janela ===
 LARGURA, ALTURA = 800, 600
 tela = pygame.display.set_mode((LARGURA, ALTURA))
-pygame.display.set_caption("PyBoss — Alquimia Arcana")
+pygame.display.set_caption("PyBoss")
 
 # === Relógio ===
 relogio = pygame.time.Clock()
 FPS = 60
 
-# === Definição de Cores (Vibe Retrô) ===
-PRETO = (10, 10, 15)        # Fundo quase preto
-ROXO_ESCURO = (40, 20, 60)  # Contorno de caixas
-VERDE_PIXEL = (50, 255, 100) # Texto principal e brilho
-BRANCO_FOSCO = (200, 200, 200) # Texto secundário
+# === Cores ===
+PRETO        = (5, 5, 15)
+AZUL_ESCURO  = (10, 10, 40)
+VERM_ESCURO  = (40, 5, 5)
+AMARELO      = (240, 192, 40)
+AMARELO_ESC  = (120, 90, 10)
+BRANCO       = (220, 220, 220)
+CINZA        = (80, 75, 100)
+VERMELHO     = (200, 30, 30)
+ROXO         = (60, 20, 100)
 
-# === Configuração de Fontes ===
-# Para o estilo pixelado, o ideal é usar uma fonte .ttf de pixel art.
-# Como não temos uma ainda, usaremos a padrão do sistema em negrito.
-# Você pode baixar uma (ex: 'Press Start 2P') e colocar na pasta assets.
-fonte_titulo = pygame.font.SysFont("arialblack", 60)
-fonte_input = pygame.font.SysFont("consolas", 32)
-fonte_hud = pygame.font.SysFont("consolas", 20)
+# === Fontes ===
+fonte_titulo   = pygame.font.SysFont("arialblack", 72)
+fonte_input    = pygame.font.SysFont("consolas", 28)
+fonte_hud      = pygame.font.SysFont("consolas", 16)
 
-# === Variáveis do Estado do Input ===
+# === Estado ===
 nome_jogador = ""
-input_ativo = True  # O campo de texto começa selecionado
-cor_borda_input = VERDE_PIXEL  # Cor quando ativo
 
-# === Função de Desenho ===
-def desenhar_tela_inicial(superficie, nome):
-    superficie.fill(PRETO)  # Limpa o fundo
 
-    # 1. Título do Jogo (centralizado)
-    texto_titulo = fonte_titulo.render("PYBOSS", True, VERDE_PIXEL)
-    rect_titulo = texto_titulo.get_rect(center=(LARGURA // 2, ALTURA // 4))
-    superficie.blit(texto_titulo, rect_titulo)
+def desenhar_degradê():
+    """Fundo degradê azul escuro → vermelho escuro."""
+    for y in range(ALTURA):
+        t = y / ALTURA
+        r = int(AZUL_ESCURO[0] + (VERM_ESCURO[0] - AZUL_ESCURO[0]) * t)
+        g = int(AZUL_ESCURO[1] + (VERM_ESCURO[1] - AZUL_ESCURO[1]) * t)
+        b = int(AZUL_ESCURO[2] + (VERM_ESCURO[2] - AZUL_ESCURO[2]) * t)
+        pygame.draw.line(tela, (r, g, b), (0, y), (LARGURA, y))
 
-    # 2. Subtítulo
-    texto_subtitulo = fonte_hud.render("Alquimia Arcana", True, BRANCO_FOSCO)
-    rect_subtitulo = texto_subtitulo.get_rect(center=(LARGURA // 2, ALTURA // 4 + 50))
-    superficie.blit(texto_subtitulo, rect_subtitulo)
 
-    # 3. Prompt do Nome
-    texto_prompt = fonte_input.render("COLOQUE SEU NOME, ALQUIMISTA:", True, BRANCO_FOSCO)
-    rect_prompt = texto_prompt.get_rect(center=(LARGURA // 2, ALTURA // 2 - 40))
-    superficie.blit(texto_prompt, rect_prompt)
+def desenhar_grade(tempo):
+    """Grade de perspectiva estilo fliperama com scroll."""
+    cor = (30, 15, 60)
+    ponto_x = LARGURA // 2
+    ponto_y = ALTURA // 2
 
-    # 4. Caixa de Input e Texto Digitado
-    # Define a caixa de texto
-    largura_input = 400
-    altura_input = 50
-    retangulo_input = pygame.Rect((LARGURA // 2 - largura_input // 2, ALTURA // 2), (largura_input, altura_input))
-    
-    # Desenha o fundo da caixa
-    pygame.draw.rect(superficie, ROXO_ESCURO, retangulo_input)
-    # Desenha a borda da caixa
-    pygame.draw.rect(superficie, cor_borda_input, retangulo_input, 3)
+    # Linhas verticais convergindo ao centro
+    for x in range(0, LARGURA + 1, 60):
+        pygame.draw.line(tela, cor, (ponto_x, ponto_y), (x, ALTURA), 1)
 
-    # Renderiza o texto que o jogador já digitou
-    superficie_nome = fonte_input.render(nome, True, VERDE_PIXEL)
-    # Garante que o texto fique centralizado na caixa
-    rect_nome = superficie_nome.get_rect(center=retangulo_input.center)
-    superficie.blit(superficie_nome, rect_nome)
+    # Linhas horizontais com scroll
+    espacamento = 40
+    offset = int(tempo * 50) % espacamento
+    for y in range(ALTURA // 2, ALTURA + espacamento, espacamento):
+        pygame.draw.line(tela, cor, (0, y - offset), (LARGURA, y - offset), 1)
 
-    # 5. Instrução para começar
-    if len(nome) > 2:  # Só mostra se tiver pelo menos 3 letras
-        texto_start = fonte_hud.render("APERTE [ENTER] PARA COMEÇAR O RITUAL", True, VERDE_PIXEL)
-        rect_start = texto_start.get_rect(center=(LARGURA // 2, ALTURA // 2 + 100))
-        
-        # Efeito de piscar simples baseado no tempo
-        if pygame.time.get_ticks() % 1000 < 500:
-            superficie.blit(texto_start, rect_start)
+
+def desenhar_borda():
+    """Borda dupla estilo arcade."""
+    pygame.draw.rect(tela, ROXO,    (0, 0, LARGURA, ALTURA), 6)
+    pygame.draw.rect(tela, AMARELO, (6, 6, LARGURA - 12, ALTURA - 12), 2)
+
+
+def desenhar_titulo(tempo):
+    """Título com sombra e pulso."""
+    pulso = 0.85 + 0.15 * math.sin(tempo * 3)
+    r = int(AMARELO[0] * pulso)
+    g = int(AMARELO[1] * pulso)
+    b = int(AMARELO[2] * pulso)
+
+    # Sombra
+    sombra = fonte_titulo.render("PyBoss", True, (60, 30, 0))
+    tela.blit(sombra, (LARGURA // 2 - sombra.get_width() // 2 + 4, 84))
+
+    # Título
+    titulo = fonte_titulo.render("PyBoss", True, (r, g, b))
+    tela.blit(titulo, (LARGURA // 2 - titulo.get_width() // 2, 80))
+
+    # Linha decorativa
+    pygame.draw.line(tela, VERMELHO,
+                     (LARGURA // 2 - 180, 192),
+                     (LARGURA // 2 + 180, 192), 2)
+
+
+def desenhar_input(nome, tempo):
+    """Campo de nome do jogador."""
+    # Prompt
+    prompt = fonte_hud.render("INSIRA SEU NOME, ALQUIMISTA:", True, BRANCO)
+    tela.blit(prompt, (LARGURA // 2 - prompt.get_width() // 2, 240))
+
+    # Caixa
+    larg, alt = 380, 48
+    caixa = pygame.Rect(LARGURA // 2 - larg // 2, 272, larg, alt)
+    pygame.draw.rect(tela, (15, 10, 30), caixa)
+
+    # Borda piscante
+    pisca = int(tempo * 3) % 2 == 0
+    cor_borda = AMARELO if pisca else AMARELO_ESC
+    pygame.draw.rect(tela, cor_borda, caixa, 2)
+
+    # Texto digitado
+    texto = fonte_input.render(nome, True, AMARELO)
+    tela.blit(texto, (caixa.x + 14, caixa.y + 10))
+
+    # Cursor piscante após o texto
+    if pisca:
+        cursor_x = caixa.x + 14 + texto.get_width() + 2
+        pygame.draw.rect(tela, AMARELO, (cursor_x, caixa.y + 10, 3, 28))
+
+    # Instrução de confirmação
+    if len(nome) >= 3:
+        if int(tempo * 2) % 2 == 0:
+            enter = fonte_hud.render("► APERTE ENTER PARA COMEÇAR ◄", True, AMARELO)
+            tela.blit(enter, (LARGURA // 2 - enter.get_width() // 2, 342))
+    else:
+        aviso = fonte_hud.render("(mínimo 3 caracteres)", True, CINZA)
+        tela.blit(aviso, (LARGURA // 2 - aviso.get_width() // 2, 342))
+
+
+def desenhar_scanlines():
+    """Scanlines para efeito CRT."""
+    scanline = pygame.Surface((LARGURA, 1), pygame.SRCALPHA)
+    scanline.fill((0, 0, 0, 50))
+    for y in range(0, ALTURA, 3):
+        tela.blit(scanline, (0, y))
+
 
 # === Loop Principal ===
 rodando = True
 while rodando:
-    # 1. Tratamento de Eventos
+    tempo = pygame.time.get_ticks() / 1000
+
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             rodando = False
-        
-        # Gerencia a digitação
+
         if evento.type == pygame.KEYDOWN:
-            if input_ativo:
-                if evento.key == pygame.K_RETURN:  # Apertou Enter
-                    if len(nome_jogador) > 2:
-                        print(f"Iniciando ritual para: {nome_jogador}")
-                        # FUTURAMENTE: Mudar o estado do jogo para a Batalha
-                    else:
-                        print("Nome muito curto!")
-                elif evento.key == pygame.K_BACKSPACE:  # Apagar
-                    nome_jogador = nome_jogador[:-1]
-                else:
-                    # Adiciona o caractere digitado (se não for muito longo)
-                    if len(nome_jogador) < 15 and evento.unicode.isprintable():
-                        nome_jogador += evento.unicode
+            if evento.key == pygame.K_RETURN:
+                if len(nome_jogador) >= 3:
+                    print(f"Iniciando jogo: {nome_jogador}")
+                    # FUTURAMENTE: mudar estado para Batalha
+            elif evento.key == pygame.K_BACKSPACE:
+                nome_jogador = nome_jogador[:-1]
+            else:
+                if len(nome_jogador) < 15 and evento.unicode.isprintable():
+                    nome_jogador += evento.unicode
 
-    # 2. Atualização da Lógica (neste caso, é visual)
-    # Faz a borda do input piscar quando ativo
-    if input_ativo:
-        if pygame.time.get_ticks() % 1200 < 600:
-            cor_borda_input = VERDE_PIXEL
-        else:
-            cor_borda_input = BRANCO_FOSCO
-    else:
-        cor_borda_input = ROXO_ESCURO
+    # Desenho
+    desenhar_degradê()
+    desenhar_grade(tempo)
+    desenhar_titulo(tempo)
+    desenhar_input(nome_jogador, tempo)
+    desenhar_borda()
+    desenhar_scanlines()  # sempre por último
 
-    # 3. Desenho
-    desenhar_tela_inicial(tela, nome_jogador)
-
-    # Atualiza a tela
     pygame.display.flip()
     relogio.tick(FPS)
 
-# === Encerramento ===
 pygame.quit()
 sys.exit()

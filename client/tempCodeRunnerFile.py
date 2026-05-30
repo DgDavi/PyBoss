@@ -1,0 +1,1 @@
+fonte_subtitulo = pygame.font.SysFont("arialblack", 22)

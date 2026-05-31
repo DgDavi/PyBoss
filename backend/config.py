@@ -3,4 +3,4 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_KEY='AIzaSyAXStAktVHN1deSGC2Meta9f9fbByjO46A'
+GEMINI_KEY=os.getenv("GEMINI_KEY")

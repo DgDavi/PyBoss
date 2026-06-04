@@ -1,4 +1,4 @@
-from viewer import TelaNome, TelaMenu
+from viewer import TelaNome, TelaMenu, TelaBatalha
 
 class GameManager:
     def __init__(self, tela):
@@ -27,7 +27,7 @@ class GameManager:
         if proximo == "menu":
             self.tela_atual = TelaMenu(self.tela, self.nome_jogador)
         elif proximo == "batalha":
-            pass  # self.tela_atual = TelaBatalha(...)
+            self.tela_atual = TelaBatalha(self.tela, self.nome_jogador)
         elif proximo == "ranking":
             pass  # self.tela_atual = TelaRanking(...)
         elif proximo == "game_over":

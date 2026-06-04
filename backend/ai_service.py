@@ -1,7 +1,7 @@
 from google import genai
 from google.genai import types
 import json
-from config import GEMINI_KEY
+from backend.config import GEMINI_KEY
 
 client = genai.Client(api_key=GEMINI_KEY)
 
@@ -114,6 +114,5 @@ def gerar_questao(tema: str, nivel:int, temas_errados: list = []):
         }
 
     return questao
-
-
-print(gerar_boss(5))
+if __name__ == "__main__":
+    print(gerar_boss(5))

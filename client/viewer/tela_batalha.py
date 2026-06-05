@@ -389,63 +389,65 @@ class TelaBatalha(TelaBase):
             self.tela.blit(txt, (self.largura // 2 - txt.get_width() // 2, 360))
             return
 
-        y_area = 190
-        pad    = 14
+        y_area = 280
+        pad = 14
 
         # Fundo da área de pergunta
-        pygame.draw.rect(
-            self.tela, (10, 6, 22),
-            (10, y_area - pad, self.largura - 20, self.altura - y_area - 40)
+        fundo_rect = pygame.Rect(
+            30, y_area - pad, self.largura - 60, self.altura - y_area - 40
         )
-        pygame.draw.rect(
-            self.tela, VERMELHO,
-            (10, y_area - pad, self.largura - 20, self.altura - y_area - 40), 2
-        )
+        pygame.draw.rect(self.tela, (10, 6, 22, 200), fundo_rect)
+        pygame.draw.rect(self.tela, VERMELHO, fundo_rect, 2)
 
         # Tema e dificuldade
         tema = self.boss_data.get("tema", "").upper() if self.boss_data else ""
-        tag  = self.fonte_hud.render(f"TEMA: {tema}", True, CINZA)
-        self.tela.blit(tag, (22, y_area - pad + 6))
+        tag = self.fonte_hud.render(f"TEMA: {tema}", True, CINZA)
+        self.tela.blit(tag, (fundo_rect.x + 12, fundo_rect.y + 6))
 
         # Enunciado
+        y_atual = y_area + 18
         self._desenhar_texto(
             self.questao.get("pergunta", ""),
-            x=22, y=y_area + 8,
-            largura=756,
+            x=fundo_rect.x + 12,
+            y=y_atual,
+            largura=fundo_rect.width - 24,
             fonte=self.fonte_pergunta,
             cor=BRANCO,
         )
+        y_atual += self._altura_texto(
+            self.questao.get("pergunta", ""),
+            largura=fundo_rect.width - 24,
+            fonte=self.fonte_pergunta,
+        )
 
         # Código
-        y_opcoes = y_area + 46
-        codigo   = self.questao.get("codigo")
+        codigo = self.questao.get("codigo")
         if codigo and str(codigo).strip().lower() not in ("null", "none", ""):
             linhas = str(codigo).split("\n")
-            # Fundo do bloco de código
+            y_codigo = y_atual + 10
             alt_bloco = len(linhas) * 22 + 10
-            pygame.draw.rect(
-                self.tela, (18, 12, 35),
-                (30, y_opcoes - 4, self.largura - 60, alt_bloco)
+            codigo_rect = pygame.Rect(
+                fundo_rect.x + 20, y_codigo - 4, fundo_rect.width - 40, alt_bloco
             )
-            pygame.draw.rect(
-                self.tela, (50, 30, 80),
-                (30, y_opcoes - 4, self.largura - 60, alt_bloco), 1
-            )
-            for linha in linhas:
+            pygame.draw.rect(self.tela, (18, 12, 35), codigo_rect)
+            pygame.draw.rect(self.tela, (50, 30, 80), codigo_rect, 1)
+            for i, linha in enumerate(linhas):
                 cod = self.fonte_codigo.render(linha, True, AMARELO)
-                self.tela.blit(cod, (40, y_opcoes))
-                y_opcoes += 22
-            y_opcoes += 10
+                self.tela.blit(cod, (codigo_rect.x + 10, y_codigo + i * 22))
+            y_atual = y_codigo + alt_bloco + 10
+        else:
+            y_atual += 10
 
         # Opções
+        y_opcoes = y_atual
         for i, opcao in enumerate(self.opcoes):
-            selecionado = (i == self.selecionado)
-            y           = y_opcoes + i * 34
+            selecionado = i == self.selecionado
+            y = y_opcoes + i * 34
 
             if selecionado:
-                pulso     = 0.4 + 0.6 * abs(math.sin(tempo * 4))
+                pulso = 0.4 + 0.6 * abs(math.sin(tempo * 4))
                 cor_fundo = (int(60 * pulso), int(10 * pulso), int(10 * pulso))
-                caixa     = pygame.Rect(20, y - 5, self.largura - 40, 30)
+                caixa = pygame.Rect(fundo_rect.x + 10, y - 5, fundo_rect.width - 20, 30)
                 pygame.draw.rect(self.tela, cor_fundo, caixa)
                 pygame.draw.rect(self.tela, AMARELO, caixa, 2)
                 cor_texto = AMARELO
@@ -453,11 +455,13 @@ class TelaBatalha(TelaBase):
                 cor_texto = CINZA
 
             txt = self.fonte_pergunta.render(opcao, True, cor_texto)
-            self.tela.blit(txt, (36, y))
+            self.tela.blit(txt, (fundo_rect.x + 26, y))
 
         # Instrução
         inst = self.fonte_hud.render("↑↓ NAVEGAR   ENTER CONFIRMAR", True, CINZA)
-        self.tela.blit(inst, (self.largura // 2 - inst.get_width() // 2, self.altura - 70))
+        self.tela.blit(
+            inst, (self.largura // 2 - inst.get_width() // 2, self.altura - 70)
+        )
 
     def _draw_mensagem(self, tempo):
         """Banner de feedback (acerto / erro / timeout) com fade."""
@@ -520,3 +524,10 @@ class TelaBatalha(TelaBase):
         if linha_atual:
             linhas.append(linha_atual)
         return linhas
+
+    def _altura_texto(self, texto, largura, fonte):
+        linhas = self._quebrar_texto(str(texto), largura, fonte)
+        if not linhas:
+            return 0
+        altura_linha = fonte.get_height()
+        return len(linhas) * (altura_linha + 4) - 4

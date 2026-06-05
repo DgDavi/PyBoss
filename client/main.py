@@ -7,7 +7,7 @@ def main():
 	pygame.init()
 	pygame.font.init()
 
-	largura, altura = 800, 600
+	largura, altura = 1280, 720
 	tela = pygame.display.set_mode((largura, altura))
 	pygame.display.set_caption("PyBoss")
 

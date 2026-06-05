@@ -53,11 +53,7 @@ class TelaBase:
         pygame.draw.rect(self.tela, AMARELO, (6, 6, self.largura - 12, self.altura - 12), 2)
 
     def desenhar_rodape(self, tempo):
-        if int(tempo * 2) % 2 == 0:
-            coin = self.fonte_hud.render("► INSERT COIN ◄", True, AMARELO)
-            self.tela.blit(coin, (self.largura // 2 - coin.get_width() // 2, self.altura - 50))
-        creditos = self.fonte_hud.render("2025  PYBOSS  ALL RIGHTS RESERVED", True, CINZA)
-        self.tela.blit(creditos, (self.largura // 2 - creditos.get_width() // 2, self.altura - 28))
+        pass
 
     def desenhar_scanlines(self):
         scanline = pygame.Surface((self.largura, 1), pygame.SRCALPHA)

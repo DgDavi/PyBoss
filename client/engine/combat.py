@@ -1,0 +1,264 @@
+# client/engine/combat.py
+
+import random
+import pygame
+
+from engine.entities import (
+    Hero,
+    BossClasses,
+    BossDicts,
+    BossExceptions,
+    BossLists,
+    BossLoops,
+    BossRecursion,
+)
+from network import gerar_boss, gerar_questao
+from engine.utils import normalizar_texto
+
+# ── Constantes de combate ────────────────
+TEMPO_RESPOSTA  = 15.0   # segundos por pergunta
+DANO_BASE_HEROI = 12
+DANO_BASE_BOSS  = 10
+TIMER_AGUARDAR  = 0.9    # segundos de feedback antes da próxima pergunta
+TIMER_MENSAGEM  = 1.4
+TIMER_ANIMACAO  = 0.3
+TIMER_NOVO_BOSS = 1.2
+
+# ── Mapa tema → classe do boss ───────────
+MAPA_BOSS = {
+    "classes":     BossClasses,
+    "dicionarios": BossDicts,
+    "excecoes":    BossExceptions,
+    "listas":      BossLists,
+    "loops":       BossLoops,
+    "recursao":    BossRecursion,
+}
+
+
+class CombatState:
+    """Gerencia toda a lógica de estado e regras da batalha."""
+
+    def __init__(self, nome_jogador):
+        # Entidades
+        self.hero = Hero()
+        self.boss = None
+        self.boss_data = None
+        self.nivel = 1
+        self.nome_jogador = nome_jogador
+
+        # Questão atual
+        self.questao = None
+        self.opcoes = []
+        self.selecionado = 0
+
+        # Combate
+        self.combo = 0
+        self.maior_combo = 0
+        self.temas_errados = []
+
+        # Timer de resposta (regressivo)
+        self.timer_resposta = TEMPO_RESPOSTA
+        self.timer_esgotado = False
+
+        # Controle de estados intermediários
+        self.aguardando = False
+        self.aguardando_timer = 0.0
+        self.mensagem = ""
+        self.mensagem_cor = (220, 220, 220) # AMARELO
+        self.mensagem_timer = 0.0
+        self.anim_timer = 0.0
+
+        # Controle de fluxo
+        self.proximo = None
+
+        self._carregar_boss()
+        self._carregar_questao()
+
+    # ─────────────────────────────────────
+    # UPDATE
+    # ─────────────────────────────────────
+
+    def update(self, dt):
+        self.hero.update(dt)
+        self._atualizar_timer_resposta(dt)
+        self._atualizar_animacao(dt)
+        self._atualizar_mensagem(dt)
+        self._resolver_proxima_acao(dt)
+
+    def _atualizar_timer_resposta(self, dt):
+        """Desconta o timer. Se zerar, trata como erro."""
+        if self.aguardando or self.mensagem_timer > 0 or not self.questao:
+            return
+
+        self.timer_resposta = max(0.0, self.timer_resposta - dt)
+
+        if self.timer_resposta == 0.0 and not self.timer_esgotado:
+            self.timer_esgotado = True
+            self._processar_timeout()
+
+    def _atualizar_animacao(self, dt):
+        if self.anim_timer <= 0:
+            return
+        self.anim_timer = max(0.0, self.anim_timer - dt)
+        if self.anim_timer == 0.0:
+            self.hero.set_state("idle")
+
+    def _atualizar_mensagem(self, dt):
+        if self.mensagem_timer <= 0:
+            return
+        self.mensagem_timer = max(0.0, self.mensagem_timer - dt)
+        if self.mensagem_timer == 0.0:
+            self.mensagem = ""
+
+    def _resolver_proxima_acao(self, dt):
+        """Após o delay de feedback, decide o que acontece a seguir."""
+        if not self.aguardando:
+            return
+
+        self.aguardando_timer = max(0.0, self.aguardando_timer - dt)
+        if self.aguardando_timer > 0:
+            return
+
+        self.aguardando = False
+
+        if self.hero.is_dead():
+            self.proximo = "game_over"
+            return
+
+        if self.boss and self.boss.is_dead():
+            self._proximo_boss()
+            return
+
+        self._carregar_questao()
+
+    # ─────────────────────────────────────
+    # INPUT
+    # ─────────────────────────────────────
+
+    def handle_input(self, acao):
+        """Processa input do jogador."""
+        if self.aguardando or self.mensagem_timer > 0 or not self.questao:
+            return
+
+        if acao == "up":
+            self.selecionado = (self.selecionado - 1) % len(self.opcoes)
+        elif acao == "down":
+            self.selecionado = (self.selecionado + 1) % len(self.opcoes)
+        elif acao == "confirm":
+            self._responder()
+
+    # ─────────────────────────────────────
+    # LÓGICA DE COMBATE
+    # ─────────────────────────────────────
+
+    def _responder(self):
+        """Processa a resposta do jogador."""
+        if not self.questao:
+            return
+
+        letra_escolhida = self.opcoes[self.selecionado].strip()[:1].upper()
+        letra_correta = str(self.questao.get("correta", "A")).strip()[:1].upper()
+
+        if letra_escolhida == letra_correta:
+            self._processar_acerto()
+        else:
+            self._processar_erro()
+
+        self.aguardando = True
+        self.aguardando_timer = TIMER_AGUARDAR
+
+    def _processar_acerto(self):
+        self.combo += 1
+        self.maior_combo = max(self.combo, self.maior_combo)
+        dano = self._calcular_dano(DANO_BASE_HEROI, self.combo)
+        self.boss.take_damage(dano)
+        self.hero.set_state("attack")
+        self.anim_timer = TIMER_ANIMACAO
+        self._set_mensagem(
+            f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO",
+            cor=(40, 190, 80) # VERDE
+        )
+
+    def _processar_erro(self):
+        dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
+        self.hero.take_damage(dano)
+        self.hero.set_state("damage")
+        self.anim_timer = TIMER_ANIMACAO
+        self._set_mensagem(
+            f"✗ ERRADO!  COMBO QUEBRADO  -{dano} HP",
+            cor=(220, 20, 60) # VERMELHO
+        )
+        self.combo = 0
+        self._registrar_erro_tema()
+
+    def _processar_timeout(self):
+        """Timer zerou — penalidade igual a um erro."""
+        dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
+        self.hero.take_damage(dano)
+        self.hero.set_state("damage")
+        self.anim_timer = TIMER_ANIMACAO
+        self._set_mensagem(
+            f"⏱ TEMPO ESGOTADO!  -{dano} HP",
+            cor=(220, 140, 20) # LARANJA
+        )
+        self.combo = 0
+        self.aguardando = True
+        self.aguardando_timer = TIMER_AGUARDAR
+        self._registrar_erro_tema()
+
+    def _calcular_dano(self, base, combo):
+        bonus = combo * 4
+        nivel = max(0, self.nivel - 1)
+        variacao = random.randint(0, 2)
+        return base + bonus + (nivel * 2) + variacao
+
+    # ─────────────────────────────────────
+    # CARREGAMENTO
+    # ─────────────────────────────────────
+
+    def _carregar_boss(self):
+        self.boss_data = gerar_boss(self.nivel)
+        tema = normalizar_texto(self.boss_data.get("tema", ""))
+        classe_boss = MAPA_BOSS.get(tema, BossLoops)
+        self.boss = classe_boss()
+        self.boss.name = self.boss_data.get("nome", self.boss.name)
+        self.boss.max_hp = int(self.boss_data.get("hp", self.boss.max_hp))
+        self.boss.hp = self.boss.max_hp
+
+    def _carregar_questao(self):
+        if not self.boss_data:
+            return
+        tema = self.boss_data.get("tema", "loops")
+        self.questao = gerar_questao(tema, self.nivel, self.temas_errados)
+        self.opcoes = self.questao.get("opcoes", [])
+        if not self.opcoes:
+            self.opcoes = ["A) ???", "B) ???", "C) ???", "D) ???"]
+        self.selecionado = 0
+        self.timer_resposta = TEMPO_RESPOSTA
+        self.timer_esgotado = False
+
+    def _proximo_boss(self):
+        self.nivel += 1
+        self._carregar_boss()
+        self._set_mensagem(
+            f"★ BOSS DERROTADO!  PRÓXIMO: {self.boss.name.upper()}",
+            cor=(220, 220, 20) # AMARELO
+        )
+        self.aguardando = True
+        self.aguardando_timer = TIMER_NOVO_BOSS
+
+    # ─────────────────────────────────────
+    # UTILITÁRIOS
+    # ─────────────────────────────────────
+
+    def _set_mensagem(self, texto, cor=None):
+        self.mensagem = texto
+        self.mensagem_cor = cor if cor else (220, 220, 20) # AMARELO
+        self.mensagem_timer = TIMER_MENSAGEM
+
+    def _registrar_erro_tema(self):
+        if not self.boss_data:
+            return
+        tema = normalizar_texto(self.boss_data.get("tema", ""))
+        if tema and tema not in self.temas_errados:
+            self.temas_errados.append(tema)

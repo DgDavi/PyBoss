@@ -135,8 +135,8 @@ class TelaTransicao(TelaBase):
 
         if self.sprite_atual:
             sprite_surf = pygame.Surface(
-                self.sprite_atual.image.get_size(), pygame.SRCALPHA)
-            sprite_surf.blit(self.sprite_atual.image, (0, 0))
+                self.sprite_atual.sprite.get_size(), pygame.SRCALPHA)
+            sprite_surf.blit(self.sprite_atual.sprite, (0, 0))
             sprite_surf.set_alpha(120)
             x = x_centro - self.sprite_atual.rect.width // 2
             self.tela.blit(sprite_surf, (x, 100))
@@ -165,11 +165,11 @@ class TelaTransicao(TelaBase):
 
         if self.sprite_proximo:
             sprite_surf = pygame.Surface(
-                self.sprite_proximo.image.get_size(), pygame.SRCALPHA)
-            sprite_surf.blit(self.sprite_proximo.image, (0, 0))
+                self.sprite_proximo.sprite.get_size(), pygame.SRCALPHA)
+            sprite_surf.blit(self.sprite_proximo.sprite, (0, 0))
 
             escuro = pygame.Surface(
-                self.sprite_proximo.image.get_size(), pygame.SRCALPHA)
+                self.sprite_proximo.sprite.get_size(), pygame.SRCALPHA)
             escuro.fill((0, 0, 0, 160))
             sprite_surf.blit(escuro, (0, 0))
 

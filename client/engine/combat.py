@@ -71,7 +71,7 @@ class CombatState:
         # Controle de fluxo
         self.proximo = None
 
-        self._carregar_boss()
+        self.carregar_boss()
         self._carregar_questao()
 
     # ─────────────────────────────────────
@@ -225,27 +225,29 @@ class CombatState:
         self.boss.max_hp = int(self.boss_data.get("hp", self.boss.max_hp))
         self.boss.hp = self.boss.max_hp
 
-    def _carregar_questao(self):
-        if not self.boss_data:
-            return
-        tema = self.boss_data.get("tema", "loops")
-        self.questao = gerar_questao(tema, self.nivel, self.temas_errados)
-        self.opcoes = self.questao.get("opcoes", [])
-        if not self.opcoes:
-            self.opcoes = ["A) ???", "B) ???", "C) ???", "D) ???"]
-        self.selecionado = 0
-        self.timer_resposta = TEMPO_RESPOSTA
-        self.timer_esgotado = False
+    def carregar_boss(self):
+        self.boss_data   = gerar_boss(self.nivel)
+        tema             = normalizar_texto(self.boss_data.get("tema", ""))
+        classe_boss      = MAPA_BOSS.get(tema, BossLoops)
+        self.boss        = classe_boss()
+        self.boss.name   = self.boss_data.get("nome",   self.boss.name)
+        self.boss.max_hp = int(self.boss_data.get("hp", self.boss.max_hp))
+        self.boss.hp     = self.boss.max_hp
+        self.boss_descricao = self.boss_data.get("descricao", "")
+
 
     def _proximo_boss(self):
+        """Chamado quando boss atual morre."""
+
+        # Guarda dados do boss derrotado para a tela de transição
+        self.boss_anterior = self.boss_data.copy()
+
+        # Gera o próximo boss para mostrar na prévia
         self.nivel += 1
-        self._carregar_boss()
-        self._set_mensagem(
-            f"★ BOSS DERROTADO!  PRÓXIMO: {self.boss.name.upper()}",
-            cor=(220, 220, 20) # AMARELO
-        )
-        self.aguardando = True
-        self.aguardando_timer = TIMER_NOVO_BOSS
+        self.proximo_boss_data = gerar_boss(self.nivel)
+
+        # Sinaliza transição para a tela de transição
+        self.proximo = "transicao"
 
     # ─────────────────────────────────────
     # UTILITÁRIOS
@@ -262,3 +264,23 @@ class CombatState:
         tema = normalizar_texto(self.boss_data.get("tema", ""))
         if tema and tema not in self.temas_errados:
             self.temas_errados.append(tema)
+
+    def _carregar_questao(self):
+        """Busca uma nova questão para o boss atual."""
+        if not self.boss_data:
+            return
+
+        tema = self.boss_data.get("tema", "")
+        dificuldade = min(self.nivel, 5)  # ou a lógica que você preferir
+
+        dados = gerar_questao(tema, dificuldade)
+        if not dados:
+            self.questao = None
+            self.opcoes = []
+            return
+
+        self.questao = dados
+        self.opcoes = dados.get("opcoes", [])
+        self.selecionado = 0
+        self.timer_resposta = TEMPO_RESPOSTA
+        self.timer_esgotado = False

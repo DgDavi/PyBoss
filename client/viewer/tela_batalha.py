@@ -176,9 +176,13 @@ class TelaBatalha(TelaBase):
 
     def _draw_personagens(self):
         cs = self.combat_state
+
         if cs.hero:
+            cs.hero.rect.midbottom = (180, 320)   # posição do jogador na arena
             cs.hero.draw(self.tela)
+
         if cs.boss:
+            cs.boss.rect.midbottom = (580, 320)   # posição do boss na arena
             cs.boss.draw(self.tela)
 
     def _draw_pergunta(self, tempo):

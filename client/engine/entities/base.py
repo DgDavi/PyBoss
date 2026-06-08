@@ -60,3 +60,9 @@ class AnimatedEntity(Entity):
 			self.frame_timer = 0.0
 			self.frame = (self.frame + 1) % len(frames)
 			self.sprite = frames[self.frame]
+
+	def sprite_path(filename):
+		caminho = os.path.join(SPRITES_DIR, filename)
+		print(f"[sprite_path] buscando: {caminho}")
+		print(f"[sprite_path] existe: {os.path.exists(caminho)}")
+		return caminho

@@ -238,6 +238,3 @@ def _questao_fallback(tema: str) -> dict:
     }
     pool = fallbacks.get(tema, fallbacks["loops"])
     return random.choice(pool)
-
-
-print(gerar_boss(10))

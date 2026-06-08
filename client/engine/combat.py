@@ -24,6 +24,9 @@ TIMER_MENSAGEM  = 1.4
 TIMER_ANIMACAO  = 0.3
 TIMER_NOVO_BOSS = 1.2
 
+# Duração da tela de apresentação do boss (segundos)
+TIMER_APRESENTACAO = 3.0
+
 # ── Mapa tema → classe do boss ───────────
 MAPA_BOSS = {
     "classes":     BossClasses,
@@ -43,6 +46,7 @@ class CombatState:
         self.hero = Hero()
         self.boss = None
         self.boss_data = None
+        self.boss_descricao = ""
         self.nivel = 1
         self.nome_jogador = nome_jogador
 
@@ -64,15 +68,25 @@ class CombatState:
         self.aguardando = False
         self.aguardando_timer = 0.0
         self.mensagem = ""
-        self.mensagem_cor = (220, 220, 220) # AMARELO
+        self.mensagem_cor = (220, 220, 220)
         self.mensagem_timer = 0.0
         self.anim_timer = 0.0
+
+        # ── Estado de apresentação do boss ──
+        # "apresentando" → mostra tema/sprite antes das perguntas
+        # "batalha"      → perguntas ativas
+        self.fase = "apresentando"
+        self.apresentacao_timer = TIMER_APRESENTACAO
 
         # Controle de fluxo
         self.proximo = None
 
+        # Dados guardados para transição
+        self.boss_anterior = None
+        self.proximo_boss_data = None
+
         self.carregar_boss()
-        self._carregar_questao()
+        # A questão só é carregada quando a apresentação terminar
 
     # ─────────────────────────────────────
     # UPDATE
@@ -80,10 +94,21 @@ class CombatState:
 
     def update(self, dt):
         self.hero.update(dt)
-        self._atualizar_timer_resposta(dt)
-        self._atualizar_animacao(dt)
-        self._atualizar_mensagem(dt)
-        self._resolver_proxima_acao(dt)
+
+        if self.fase == "apresentando":
+            self._atualizar_apresentacao(dt)
+        else:
+            self._atualizar_timer_resposta(dt)
+            self._atualizar_animacao(dt)
+            self._atualizar_mensagem(dt)
+            self._resolver_proxima_acao(dt)
+
+    def _atualizar_apresentacao(self, dt):
+        """Conta o tempo de apresentação; ao zerar entra na fase de batalha."""
+        self.apresentacao_timer = max(0.0, self.apresentacao_timer - dt)
+        if self.apresentacao_timer == 0.0:
+            self.fase = "batalha"
+            self._carregar_questao()
 
     def _atualizar_timer_resposta(self, dt):
         """Desconta o timer. Se zerar, trata como erro."""
@@ -137,6 +162,12 @@ class CombatState:
 
     def handle_input(self, acao):
         """Processa input do jogador."""
+        # Na fase de apresentação, ENTER/SPACE adianta a contagem
+        if self.fase == "apresentando":
+            if acao == "confirm":
+                self.apresentacao_timer = 0.0
+            return
+
         if self.aguardando or self.mensagem_timer > 0 or not self.questao:
             return
 
@@ -176,7 +207,7 @@ class CombatState:
         self.anim_timer = TIMER_ANIMACAO
         self._set_mensagem(
             f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO",
-            cor=(40, 190, 80) # VERDE
+            cor=(40, 190, 80)
         )
 
     def _processar_erro(self):
@@ -186,7 +217,7 @@ class CombatState:
         self.anim_timer = TIMER_ANIMACAO
         self._set_mensagem(
             f"✗ ERRADO!  COMBO QUEBRADO  -{dano} HP",
-            cor=(220, 20, 60) # VERMELHO
+            cor=(220, 20, 60)
         )
         self.combo = 0
         self._registrar_erro_tema()
@@ -199,7 +230,7 @@ class CombatState:
         self.anim_timer = TIMER_ANIMACAO
         self._set_mensagem(
             f"⏱ TEMPO ESGOTADO!  -{dano} HP",
-            cor=(220, 140, 20) # LARANJA
+            cor=(220, 140, 20)
         )
         self.combo = 0
         self.aguardando = True
@@ -216,16 +247,8 @@ class CombatState:
     # CARREGAMENTO
     # ─────────────────────────────────────
 
-    def _carregar_boss(self):
-        self.boss_data = gerar_boss(self.nivel)
-        tema = normalizar_texto(self.boss_data.get("tema", ""))
-        classe_boss = MAPA_BOSS.get(tema, BossLoops)
-        self.boss = classe_boss()
-        self.boss.name = self.boss_data.get("nome", self.boss.name)
-        self.boss.max_hp = int(self.boss_data.get("hp", self.boss.max_hp))
-        self.boss.hp = self.boss.max_hp
-
     def carregar_boss(self):
+        """Gera e instancia o boss para o nível atual."""
         self.boss_data   = gerar_boss(self.nivel)
         tema             = normalizar_texto(self.boss_data.get("tema", ""))
         classe_boss      = MAPA_BOSS.get(tema, BossLoops)
@@ -235,27 +258,42 @@ class CombatState:
         self.boss.hp     = self.boss.max_hp
         self.boss_descricao = self.boss_data.get("descricao", "")
 
+    def carregar_boss_dos_dados(self):
+        """
+        Instancia o boss a partir de boss_data já preenchido externamente
+        (usado pelo GameManager ao retornar da TelaTransicao).
+        """
+        if not self.boss_data:
+            self.carregar_boss()
+            return
+        tema             = normalizar_texto(self.boss_data.get("tema", ""))
+        classe_boss      = MAPA_BOSS.get(tema, BossLoops)
+        self.boss        = classe_boss()
+        self.boss.name   = self.boss_data.get("nome",   self.boss.name)
+        self.boss.max_hp = int(self.boss_data.get("hp", self.boss.max_hp))
+        self.boss.hp     = self.boss.max_hp
+        self.boss_descricao = self.boss_data.get("descricao", "")
 
     def _proximo_boss(self):
-        """Chamado quando boss atual morre."""
-
-        # Guarda dados do boss derrotado para a tela de transição
-        self.boss_anterior = self.boss_data.copy()
-
-        # Gera o próximo boss para mostrar na prévia
-        self.nivel += 1
+        """Chamado quando boss atual morre — sinaliza transição."""
+        self.boss_anterior    = self.boss_data.copy()
+        self.nivel           += 1
         self.proximo_boss_data = gerar_boss(self.nivel)
-
-        # Sinaliza transição para a tela de transição
-        self.proximo = "transicao"
+        self.proximo          = "transicao"
 
     # ─────────────────────────────────────
     # UTILITÁRIOS
     # ─────────────────────────────────────
 
+    def get_stats_finais(self):
+        return {
+            "maior_combo":   self.maior_combo,
+            "temas_errados": list(self.temas_errados),
+        }
+
     def _set_mensagem(self, texto, cor=None):
         self.mensagem = texto
-        self.mensagem_cor = cor if cor else (220, 220, 20) # AMARELO
+        self.mensagem_cor = cor if cor else (220, 220, 20)
         self.mensagem_timer = TIMER_MENSAGEM
 
     def _registrar_erro_tema(self):
@@ -270,17 +308,17 @@ class CombatState:
         if not self.boss_data:
             return
 
-        tema = self.boss_data.get("tema", "")
-        dificuldade = min(self.nivel, 5)  # ou a lógica que você preferir
+        tema        = self.boss_data.get("tema", "")
+        dificuldade = min(self.nivel, 5)
 
         dados = gerar_questao(tema, dificuldade)
         if not dados:
             self.questao = None
-            self.opcoes = []
+            self.opcoes  = []
             return
 
-        self.questao = dados
-        self.opcoes = dados.get("opcoes", [])
-        self.selecionado = 0
+        self.questao        = dados
+        self.opcoes         = dados.get("opcoes", [])
+        self.selecionado    = 0
         self.timer_resposta = TEMPO_RESPOSTA
         self.timer_esgotado = False

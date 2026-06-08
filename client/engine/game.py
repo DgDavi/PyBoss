@@ -1,6 +1,6 @@
 # client/game_manager.py
 
-from viewer import TelaNome, TelaMenu, TelaBatalha, TelaTransicao
+from viewer import TelaNome, TelaMenu, TelaBatalha, TelaTransicao, TelaGameOver
 
 
 class GameManager:
@@ -67,4 +67,6 @@ class GameManager:
             pass  # self.tela_atual = TelaRanking(self.tela)
 
         elif proximo == "game_over":
-            pass  # self.tela_atual = TelaGameOver(self.tela)
+            cs = self.tela_atual.combat_state
+            pontuacao = cs.maior_combo * 10 + cs.nivel * 50
+            self.tela_atual = TelaGameOver(self.tela, pontuacao)

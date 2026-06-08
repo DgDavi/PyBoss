@@ -41,13 +41,13 @@ MAPA_BOSS = {
 class CombatState:
     """Gerencia toda a lógica de estado e regras da batalha."""
 
-    def __init__(self, nome_jogador):
+    def __init__(self, nome_jogador, boss_data=None, nivel=1):
         # Entidades
         self.hero = Hero()
         self.boss = None
         self.boss_data = None
         self.boss_descricao = ""
-        self.nivel = 1
+        self.nivel = nivel
         self.nome_jogador = nome_jogador
 
         # Questão atual
@@ -59,6 +59,7 @@ class CombatState:
         self.combo = 0
         self.maior_combo = 0
         self.temas_errados = []
+        self._fila_questoes = {}
 
         # Timer de resposta (regressivo)
         self.timer_resposta = TEMPO_RESPOSTA
@@ -85,8 +86,13 @@ class CombatState:
         self.boss_anterior = None
         self.proximo_boss_data = None
 
-        self.carregar_boss()
         # A questão só é carregada quando a apresentação terminar
+
+        if boss_data:
+            self.boss_data = boss_data
+            self.carregar_boss_dos_dados()
+        else:
+            self.carregar_boss()
 
     # ─────────────────────────────────────
     # UPDATE
@@ -304,18 +310,27 @@ class CombatState:
             self.temas_errados.append(tema)
 
     def _carregar_questao(self):
-        """Busca uma nova questão para o boss atual."""
         if not self.boss_data:
             return
 
         tema        = self.boss_data.get("tema", "")
         dificuldade = min(self.nivel, 5)
 
-        dados = gerar_questao(tema, dificuldade)
-        if not dados:
-            self.questao = None
-            self.opcoes  = []
-            return
+        # Usa fila local se tiver questões guardadas
+        if self._fila_questoes.get(tema):
+            dados = self._fila_questoes[tema].pop(0)
+        else:
+            resposta = gerar_questao(tema, dificuldade)
+            # gerar_questao agora deve retornar a lista inteira — veja abaixo
+            if not resposta:
+                self.questao = None
+                self.opcoes  = []
+                return
+            if isinstance(resposta, list):
+                self._fila_questoes[tema] = resposta[1:]
+                dados = resposta[0]
+            else:
+                dados = resposta
 
         self.questao        = dados
         self.opcoes         = dados.get("opcoes", [])

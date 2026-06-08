@@ -2,3 +2,4 @@ from viewer.tela_nome import TelaNome
 from viewer.tela_menu import TelaMenu
 from viewer.tela_batalha import TelaBatalha
 from viewer.tela_transicao import TelaTransicao
+from viewer.tela_game_over import TelaGameOver

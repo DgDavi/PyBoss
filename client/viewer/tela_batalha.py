@@ -17,10 +17,9 @@ PRETO_SEMI  = (0,     0,   0, 160)
 
 class TelaBatalha(TelaBase):
 
-    def __init__(self, tela, nome_jogador):
+    def __init__(self, tela, nome_jogador, boss_data=None, nivel=1):
         super().__init__(tela)
         self.nome_jogador = nome_jogador
-        self.combat_state = CombatState(nome_jogador)
 
         # Delta time
         self.ultima_atualizacao = pygame.time.get_ticks()
@@ -33,6 +32,7 @@ class TelaBatalha(TelaBase):
         self.fonte_codigo   = pygame.font.SysFont("consolas",   17)
         self.fonte_apres    = pygame.font.SysFont("arialblack", 44)
         self.fonte_apres_sub = pygame.font.SysFont("consolas",  18)
+        self.combat_state = CombatState(nome_jogador, boss_data=boss_data, nivel=nivel)
 
     @property
     def proximo(self):

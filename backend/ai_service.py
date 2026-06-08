@@ -1,15 +1,10 @@
-# backend/ai_service.py
-
+import random
 import json
 from groq import Groq
 from .config import GROQ_API_KEY
 
 client = Groq(api_key=GROQ_API_KEY)
 MODELO = "llama-3.3-70b-versatile"
-
-# ── Cache local de questões ───────────────
-_cache_questoes = {}
-
 
 def chamar_ia(prompt: str) -> str | None:
     try:
@@ -40,6 +35,10 @@ def parsear_json(texto: str | None) -> dict | None:
 # ─────────────────────────────────────────
 
 def gerar_boss(nivel: int) -> dict:
+    tema_sugerido = random.choice(
+        ["listas", "loops", "classes", "excecoes", "recursao", "dicionarios"]
+    )
+
     prompt = f"""
     Você é o gerador de bosses do PyBoss, um jogo educativo de Python.
 
@@ -48,6 +47,7 @@ def gerar_boss(nivel: int) -> dict:
     Regras:
     - Nome criativo em MAIÚSCULAS que remeta ao tema Python
     - O tema deve ser UM desses valores exatos: listas, loops, classes, excecoes, recursao, dicionarios
+    - Sugestão de tema para este nível: {tema_sugerido} (pode usar outro se preferir)
     - As 3 cores devem combinar e refletir a personalidade do boss (formato hex)
     - Descrição épica e curta (máximo 1 frase)
     - HP entre {80 + nivel * 15} e {100 + nivel * 20}
@@ -55,7 +55,7 @@ def gerar_boss(nivel: int) -> dict:
     Retorne APENAS o JSON abaixo, sem texto extra, sem ```json:
     {{
         "nome": "NOME EM MAIÚSCULAS",
-        "tema": "loops",
+        "tema": "escreva aqui o tema escolhido",
         "cores": ["#hexcor1", "#hexcor2", "#hexcor3"],
         "fraqueza": "tema que ele é fraco",
         "hp": 120,
@@ -68,27 +68,18 @@ def gerar_boss(nivel: int) -> dict:
 
     if not boss:
         boss = {
-            "nome":     "SYNTAXERROR",
-            "tema":     "loops",
-            "cores":    ["#1a1a2e", "#e94560", "#0f3460"],
-            "fraqueza": "funcoes",
-            "hp":       80 + nivel * 15,
+            "nome":      "SYNTAXERROR",
+            "tema":      tema_sugerido,
+            "cores":     ["#1a1a2e", "#e94560", "#0f3460"],
+            "fraqueza":  "funcoes",
+            "hp":        80 + nivel * 15,
             "descricao": "O erro que nunca some."
         }
 
     return boss
 
 
-# ─────────────────────────────────────────
-# GERAR QUESTÃO (com cache em lote)
-# ─────────────────────────────────────────
-
 def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
-    # Usa cache se disponível
-    if tema in _cache_questoes and _cache_questoes[tema]:
-        return _cache_questoes[tema].pop(0)
-
-    # Gera 5 questões de uma vez para economizar chamadas
     dificuldade = (
         "fácil"   if nivel <= 2 else
         "média"   if nivel <= 5 else
@@ -111,6 +102,9 @@ def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
     - Dificuldade: {dificuldade}
     - {contexto_erros}
     - Código curto se necessário (máximo 5 linhas)
+    - O campo "codigo" deve conter APENAS código Python incompleto ou neutro que contextualize a pergunta
+    - NUNCA revele a resposta correta dentro do campo "codigo"
+    - Se não precisar de código, use null
     - 4 opções plausíveis por questão
     - Explicação didática e direta
 
@@ -132,44 +126,9 @@ def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
     dados    = parsear_json(resposta)
 
     if dados and "questoes" in dados and dados["questoes"]:
-        questoes = dados["questoes"]
-        _cache_questoes[tema] = questoes[1:]   # guarda o resto no cache
-        return questoes[0]
+        return dados["questoes"]   # retorna lista inteira
 
-    return _questao_fallback(tema)
-
-
-# ─────────────────────────────────────────
-# GERAR ORÁCULO
-# ─────────────────────────────────────────
-
-def gerar_oraculo(boss: dict, combo_atual: int) -> str:
-    risco = (
-        "ALTO — um erro agora será devastador!"
-        if combo_atual >= 5 else
-        "moderado"
-    )
-
-    prompt = f"""
-    Você é o Oráculo do PyBoss, um sábio misterioso que guia o jogador.
-
-    Situação atual:
-    - Boss: {boss.get("nome")}
-    - Tema: {boss.get("tema")}
-    - Fraqueza: {boss.get("fraqueza")}
-    - Combo atual: {combo_atual}x
-    - Nível de risco: {risco}
-
-    Dê UMA dica estratégica:
-    - Máximo 2 frases
-    - Tom épico e misterioso
-    - Mencione a fraqueza sutilmente
-    - Se combo >= 5, alerte sobre o risco
-    - Responda apenas o texto, sem JSON
-    """
-
-    return chamar_ia(prompt) or "Os segredos do combate permanecem ocultos..."
-
+    return [_questao_fallback(tema)]  # retorna lista também para consistência
 
 # ─────────────────────────────────────────
 # GERAR RELATÓRIO FINAL

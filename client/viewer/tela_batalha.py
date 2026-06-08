@@ -4,7 +4,7 @@ import math
 import pygame
 
 from viewer.base import TelaBase, AMARELO, CINZA, VERMELHO
-from engine.combat import CombatState, TEMPO_RESPOSTA, TIMER_MENSAGEM
+from engine.combat import CombatState, TEMPO_RESPOSTA, TIMER_MENSAGEM, TIMER_APRESENTACAO
 
 # ── Cores ────────────────────────────────
 BRANCO      = (220, 220, 220)
@@ -31,6 +31,8 @@ class TelaBatalha(TelaBase):
         self.fonte_menu     = pygame.font.SysFont("arialblack", 26)
         self.fonte_pergunta = pygame.font.SysFont("consolas",   20)
         self.fonte_codigo   = pygame.font.SysFont("consolas",   17)
+        self.fonte_apres    = pygame.font.SysFont("arialblack", 44)
+        self.fonte_apres_sub = pygame.font.SysFont("consolas",  18)
 
     @property
     def proximo(self):
@@ -38,8 +40,6 @@ class TelaBatalha(TelaBase):
 
     @proximo.setter
     def proximo(self, valor):
-        # O GameManager pode tentar setar, mas a lógica de fluxo
-        # é controlada internamente pelo CombatState.
         pass
 
     # ─────────────────────────────────────
@@ -52,7 +52,7 @@ class TelaBatalha(TelaBase):
                 self.combat_state.handle_input("up")
             elif evento.key == pygame.K_DOWN:
                 self.combat_state.handle_input("down")
-            elif evento.key == pygame.K_RETURN:
+            elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self.combat_state.handle_input("confirm")
 
     # ─────────────────────────────────────
@@ -63,32 +63,122 @@ class TelaBatalha(TelaBase):
         agora = pygame.time.get_ticks()
         dt    = (agora - self.ultima_atualizacao) / 1000
         self.ultima_atualizacao = agora
-
         self.combat_state.update(dt)
 
     # ─────────────────────────────────────
-    # DRAW
+    # DRAW — roteador principal
     # ─────────────────────────────────────
 
     def draw(self):
         tempo = pygame.time.get_ticks() / 1000
         self.desenhar_degradê()
         self.desenhar_grade(tempo)
+
+        if self.combat_state.fase == "apresentando":
+            self._draw_apresentacao(tempo)
+        else:
+            self._draw_batalha(tempo)
+
+        self.desenhar_rodape(tempo)
+        self.desenhar_borda()
+        self.desenhar_scanlines()
+
+    # ─────────────────────────────────────
+    # FASE DE APRESENTAÇÃO
+    # ─────────────────────────────────────
+
+    def _draw_apresentacao(self, tempo):
+        """
+        Tela de apresentação do boss: mostra tema, sprite e nome
+        antes das perguntas começarem.
+        """
+        cs = self.combat_state
+
+        # ── Título "NOVO INIMIGO" pulsante ──
+        pulso = 0.80 + 0.20 * math.sin(tempo * 4)
+        cor_titulo = tuple(int(c * pulso) for c in VERMELHO)
+        titulo = self.fonte_apres.render("NOVO INIMIGO!", True, cor_titulo)
+        self.tela.blit(titulo,
+                       (self.largura // 2 - titulo.get_width() // 2, 30))
+
+        pygame.draw.line(
+            self.tela, VERMELHO,
+            (self.largura // 2 - 220, 88),
+            (self.largura // 2 + 220, 88), 2
+        )
+
+        # ── Sprite do boss centralizado ──
+        if cs.boss:
+            cs.boss.rect.midbottom = (self.largura // 2, 280)
+            cs.boss.draw(self.tela)
+
+        # ── Nome do boss ──
+        if cs.boss_data:
+            nome_boss = cs.boss_data.get("nome", "???").upper()
+            nome_surf = self.fonte_apres.render(nome_boss, True, AMARELO)
+            self.tela.blit(nome_surf,
+                           (self.largura // 2 - nome_surf.get_width() // 2, 290))
+
+            # ── Tema ──
+            tema = cs.boss_data.get("tema", "").upper()
+            tema_surf = self.fonte_apres_sub.render(
+                f"TEMA: {tema}", True, LARANJA)
+            self.tela.blit(tema_surf,
+                           (self.largura // 2 - tema_surf.get_width() // 2, 344))
+
+            # ── Descrição (quebra de linha automática) ──
+            descricao = cs.boss_descricao
+            if descricao:
+                self._desenhar_texto(
+                    descricao,
+                    x       = self.largura // 2 - 280,
+                    y       = 376,
+                    largura = 560,
+                    fonte   = self.fonte_apres_sub,
+                    cor     = CINZA,
+                )
+
+            # ── HP do boss ──
+            hp_surf = self.fonte_apres_sub.render(
+                f"HP: {cs.boss.max_hp}", True, VERMELHO)
+            self.tela.blit(hp_surf,
+                           (self.largura // 2 - hp_surf.get_width() // 2, 420))
+
+        # ── Barra de contagem regressiva ──
+        pct  = cs.apresentacao_timer / TIMER_APRESENTACAO
+        larg = 320
+        x    = self.largura // 2 - larg // 2
+        y    = self.altura - 100
+
+        pygame.draw.rect(self.tela, (30, 20, 50), (x, y, larg, 8))
+        pygame.draw.rect(self.tela, AMARELO,       (x, y, int(larg * pct), 8))
+        pygame.draw.rect(self.tela, CINZA,         (x, y, larg, 8), 1)
+
+        # ── Instrução ──
+        inst = self.fonte_hud.render(
+            "ENTER  PARA INICIAR BATALHA", True, CINZA)
+        self.tela.blit(inst,
+                       (self.largura // 2 - inst.get_width() // 2,
+                        self.altura - 80))
+
+    # ─────────────────────────────────────
+    # FASE DE BATALHA (perguntas)
+    # ─────────────────────────────────────
+
+    def _draw_batalha(self, tempo):
         self._draw_titulo(tempo)
         self._draw_hud()
         self._draw_timer_bar()
         self._draw_personagens()
         self._draw_pergunta(tempo)
         self._draw_mensagem(tempo)
-        self.desenhar_rodape(tempo)
-        self.desenhar_borda()
-        self.desenhar_scanlines()
 
     def _draw_titulo(self, tempo):
         pulso = 0.85 + 0.15 * math.sin(tempo * 3)
         cor   = tuple(int(c * pulso) for c in AMARELO)
         titulo = self.fonte_titulo.render("BATALHA", True, cor)
-        self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, 14))
+        self.tela.blit(titulo,
+                       (self.largura // 2 - titulo.get_width() // 2, 14))
         pygame.draw.line(
             self.tela, VERMELHO,
             (self.largura // 2 - 140, 60),
@@ -100,49 +190,42 @@ class TelaBatalha(TelaBase):
         if not cs.boss:
             return
 
-        # Barra de vida — jogador (esquerda)
         self._draw_barra_vida(
-            rect  = (self.largura // 2 - 330, 100, 260, 18),
-            hp    = cs.hero.hp,
-            hp_max = cs.hero.max_hp,
-            nome  = self.nome_jogador.upper(),
-            alinha_esquerda = True,
+            rect             = (self.largura // 2 - 330, 100, 260, 18),
+            hp               = cs.hero.hp,
+            hp_max           = cs.hero.max_hp,
+            nome             = self.nome_jogador.upper(),
+            alinha_esquerda  = True,
         )
 
-        # Barra de vida — boss (direita)
         self._draw_barra_vida(
-            rect  = (self.largura // 2 + 70, 100, 260, 18),
-            hp    = cs.boss.hp,
-            hp_max = cs.boss.max_hp,
-            nome  = cs.boss.name.upper(),
-            alinha_esquerda = False,
+            rect             = (self.largura // 2 + 70, 100, 260, 18),
+            hp               = cs.boss.hp,
+            hp_max           = cs.boss.max_hp,
+            nome             = cs.boss.name.upper(),
+            alinha_esquerda  = False,
         )
 
-        # Combo centralizado
         cor_combo = AMARELO if cs.combo > 0 else CINZA
         combo_txt = self.fonte_nome.render(f"COMBO  x{cs.combo}", True, cor_combo)
         self.tela.blit(combo_txt,
                        (self.largura // 2 - combo_txt.get_width() // 2, 126))
 
-        # Nível
         nivel_txt = self.fonte_hud.render(f"NV {cs.nivel}", True, CINZA)
-        self.tela.blit(nivel_txt, (self.largura // 2 - nivel_txt.get_width() // 2, 148))
+        self.tela.blit(nivel_txt,
+                       (self.largura // 2 - nivel_txt.get_width() // 2, 148))
 
     def _draw_barra_vida(self, rect, hp, hp_max, nome, alinha_esquerda):
         x, y, w, h = rect
 
-        # Fundo
         pygame.draw.rect(self.tela, VERM_ESCURO, rect)
 
-        # Preenchimento com cor dinâmica
         pct = 0 if hp_max == 0 else hp / hp_max
         cor = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
         pygame.draw.rect(self.tela, cor, (x, y, int(w * pct), h))
 
-        # Borda
         pygame.draw.rect(self.tela, AMARELO, rect, 2)
 
-        # Nome e HP
         info = self.fonte_nome.render(f"{nome}  {hp}/{hp_max}", True, BRANCO)
         if alinha_esquerda:
             self.tela.blit(info, (x, y - 22))
@@ -150,84 +233,79 @@ class TelaBatalha(TelaBase):
             self.tela.blit(info, (x + w - info.get_width(), y - 22))
 
     def _draw_timer_bar(self):
-        """Barra de tempo regressiva centralizada."""
         cs = self.combat_state
         if not cs.questao or cs.aguardando:
             return
 
-        pct = cs.timer_resposta / TEMPO_RESPOSTA
-        cor = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
+        pct  = cs.timer_resposta / TEMPO_RESPOSTA
+        cor  = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
+        larg = 320
+        x    = self.largura // 2 - larg // 2
+        y    = 170
 
-        larg  = 320
-        x     = self.largura // 2 - larg // 2
-        y     = 170
-
-        # Fundo
         pygame.draw.rect(self.tela, (30, 20, 50), (x, y, larg, 8))
-        # Preenchimento
-        pygame.draw.rect(self.tela, cor, (x, y, int(larg * pct), 8))
-        # Borda
-        pygame.draw.rect(self.tela, CINZA, (x, y, larg, 8), 1)
+        pygame.draw.rect(self.tela, cor,           (x, y, int(larg * pct), 8))
+        pygame.draw.rect(self.tela, CINZA,         (x, y, larg, 8), 1)
 
-        # Segundos restantes
         seg = math.ceil(cs.timer_resposta)
         txt = self.fonte_hud.render(f"{seg}s", True, cor)
         self.tela.blit(txt, (x + larg + 6, y - 2))
 
     def _draw_personagens(self):
         cs = self.combat_state
+
         if cs.hero:
+            cs.hero.rect.midbottom = (180, 320)
             cs.hero.draw(self.tela)
+
         if cs.boss:
+            cs.boss.rect.midbottom = (580, 320)
             cs.boss.draw(self.tela)
 
     def _draw_pergunta(self, tempo):
-        """Área de pergunta + opções na parte inferior."""
         cs = self.combat_state
         if not cs.questao:
             txt = self.fonte_menu.render("CARREGANDO QUESTÃO...", True, CINZA)
-            self.tela.blit(txt, (self.largura // 2 - txt.get_width() // 2, 360))
+            self.tela.blit(txt,
+                           (self.largura // 2 - txt.get_width() // 2, 360))
             return
 
         y_area = 280
-        pad = 14
+        pad    = 14
 
-        # Fundo da área de pergunta
         fundo_rect = pygame.Rect(
             30, y_area - pad, self.largura - 60, self.altura - y_area - 40
         )
         pygame.draw.rect(self.tela, (10, 6, 22, 200), fundo_rect)
         pygame.draw.rect(self.tela, VERMELHO, fundo_rect, 2)
 
-        # Tema e dificuldade
         tema = cs.boss_data.get("tema", "").upper() if cs.boss_data else ""
-        tag = self.fonte_hud.render(f"TEMA: {tema}", True, CINZA)
+        tag  = self.fonte_hud.render(f"TEMA: {tema}", True, CINZA)
         self.tela.blit(tag, (fundo_rect.x + 12, fundo_rect.y + 6))
 
-        # Enunciado
         y_atual = y_area + 18
         self._desenhar_texto(
             cs.questao.get("pergunta", ""),
-            x=fundo_rect.x + 12,
-            y=y_atual,
-            largura=fundo_rect.width - 24,
-            fonte=self.fonte_pergunta,
-            cor=BRANCO,
+            x       = fundo_rect.x + 12,
+            y       = y_atual,
+            largura = fundo_rect.width - 24,
+            fonte   = self.fonte_pergunta,
+            cor     = BRANCO,
         )
         y_atual += self._altura_texto(
             cs.questao.get("pergunta", ""),
-            largura=fundo_rect.width - 24,
-            fonte=self.fonte_pergunta,
+            largura = fundo_rect.width - 24,
+            fonte   = self.fonte_pergunta,
         )
 
-        # Código
         codigo = cs.questao.get("codigo")
         if codigo and str(codigo).strip().lower() not in ("null", "none", ""):
-            linhas = str(codigo).split("\n")
+            linhas   = str(codigo).split("\n")
             y_codigo = y_atual + 10
             alt_bloco = len(linhas) * 22 + 10
             codigo_rect = pygame.Rect(
-                fundo_rect.x + 20, y_codigo - 4, fundo_rect.width - 40, alt_bloco
+                fundo_rect.x + 20, y_codigo - 4,
+                fundo_rect.width - 40, alt_bloco
             )
             pygame.draw.rect(self.tela, (18, 12, 35), codigo_rect)
             pygame.draw.rect(self.tela, (50, 30, 80), codigo_rect, 1)
@@ -238,16 +316,16 @@ class TelaBatalha(TelaBase):
         else:
             y_atual += 10
 
-        # Opções
         y_opcoes = y_atual
         for i, opcao in enumerate(cs.opcoes):
             selecionado = i == cs.selecionado
             y = y_opcoes + i * 34
 
             if selecionado:
-                pulso = 0.4 + 0.6 * abs(math.sin(tempo * 4))
+                pulso     = 0.4 + 0.6 * abs(math.sin(tempo * 4))
                 cor_fundo = (int(60 * pulso), int(10 * pulso), int(10 * pulso))
-                caixa = pygame.Rect(fundo_rect.x + 10, y - 5, fundo_rect.width - 20, 30)
+                caixa     = pygame.Rect(
+                    fundo_rect.x + 10, y - 5, fundo_rect.width - 20, 30)
                 pygame.draw.rect(self.tela, cor_fundo, caixa)
                 pygame.draw.rect(self.tela, AMARELO, caixa, 2)
                 cor_texto = AMARELO
@@ -257,49 +335,43 @@ class TelaBatalha(TelaBase):
             txt = self.fonte_pergunta.render(opcao, True, cor_texto)
             self.tela.blit(txt, (fundo_rect.x + 26, y))
 
-        # Instrução
         inst = self.fonte_hud.render("↑↓ NAVEGAR   ENTER CONFIRMAR", True, CINZA)
-        self.tela.blit(
-            inst, (self.largura // 2 - inst.get_width() // 2, self.altura - 70)
-        )
+        self.tela.blit(inst,
+                       (self.largura // 2 - inst.get_width() // 2,
+                        self.altura - 70))
 
     def _draw_mensagem(self, tempo):
-        """Banner de feedback (acerto / erro / timeout) com fade."""
         cs = self.combat_state
         if not cs.mensagem or cs.mensagem_timer <= 0:
             return
 
-        # Fundo semi-transparente
-        alpha  = int(min(255, cs.mensagem_timer / TIMER_MENSAGEM * 255))
+        alpha   = int(min(255, cs.mensagem_timer / TIMER_MENSAGEM * 255))
         overlay = pygame.Surface((self.largura, 44), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, max(0, alpha // 2)))
         self.tela.blit(overlay, (0, 154))
 
-        # Pisca levemente
         pulso = 0.7 + 0.3 * math.sin(tempo * 8)
         cor   = tuple(min(255, int(c * pulso)) for c in cs.mensagem_cor)
 
         txt = self.fonte_menu.render(cs.mensagem, True, cor)
-        self.tela.blit(txt, (self.largura // 2 - txt.get_width() // 2, 162))
+        self.tela.blit(txt,
+                       (self.largura // 2 - txt.get_width() // 2, 162))
 
     # ─────────────────────────────────────
     # UTILITÁRIOS DE RENDERIZAÇÃO
     # ─────────────────────────────────────
 
     def _desenhar_texto(self, texto, x, y, largura, fonte, cor):
-        """Desenha texto com quebra de linha automática."""
         linhas = self._quebrar_texto(texto, largura, fonte)
         for i, linha in enumerate(linhas):
             render = fonte.render(linha, True, cor)
             self.tela.blit(render, (x, y + i * fonte.get_height()))
 
     def _quebrar_texto(self, texto, largura, fonte):
-        """Quebra um texto longo em várias linhas."""
-        linhas = []
-        palavras = texto.split(' ')
-        linha_atual = ''
+        linhas       = []
+        palavras     = texto.split(' ')
+        linha_atual  = ''
         for palavra in palavras:
-            # Verifica se a palavra com a linha atual excede a largura
             if fonte.size(linha_atual + ' ' + palavra)[0] < largura:
                 linha_atual += ' ' + palavra
             else:
@@ -309,6 +381,5 @@ class TelaBatalha(TelaBase):
         return linhas
 
     def _altura_texto(self, texto, largura, fonte):
-        """Calcula a altura total que um texto ocupará."""
         linhas = self._quebrar_texto(texto, largura, fonte)
         return len(linhas) * fonte.get_height()

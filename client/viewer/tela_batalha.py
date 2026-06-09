@@ -13,7 +13,7 @@ LARANJA     = (220, 140,  20)
 AZUL_CLARO  = (80,  160, 255)
 VERM_ESCURO = (60,   10,  10)
 PRETO_SEMI  = (0,     0,   0, 160)
-
+Y_DIVISOR = 315
 
 class TelaBatalha(TelaBase):
 
@@ -173,16 +173,22 @@ class TelaBatalha(TelaBase):
         self._draw_pergunta(tempo)
         self._draw_mensagem(tempo)
 
+        pygame.draw.line(self.tela, CINZA,
+                     (30, Y_DIVISOR), (self.largura - 30, Y_DIVISOR), 1)
+
+        self._draw_pergunta(tempo)
+        self._draw_mensagem(tempo)
+
     def _draw_titulo(self, tempo):
         pulso = 0.85 + 0.15 * math.sin(tempo * 3)
         cor   = tuple(int(c * pulso) for c in AMARELO)
         titulo = self.fonte_titulo.render("BATALHA", True, cor)
         self.tela.blit(titulo,
-                       (self.largura // 2 - titulo.get_width() // 2, 14))
+                    (self.largura // 2 - titulo.get_width() // 2, 8))
         pygame.draw.line(
             self.tela, VERMELHO,
-            (self.largura // 2 - 140, 60),
-            (self.largura // 2 + 140, 60), 2
+            (self.largura // 2 - 140, 50),
+            (self.largura // 2 + 140, 50), 2
         )
 
     def _draw_hud(self):
@@ -191,29 +197,28 @@ class TelaBatalha(TelaBase):
             return
 
         self._draw_barra_vida(
-            rect             = (self.largura // 2 - 330, 100, 260, 18),
-            hp               = cs.hero.hp,
-            hp_max           = cs.hero.max_hp,
-            nome             = self.nome_jogador.upper(),
-            alinha_esquerda  = True,
+            rect            = (self.largura // 2 - 330, 58, 260, 18),  # era 100
+            hp              = cs.hero.hp,
+            hp_max          = cs.hero.max_hp,
+            nome            = self.nome_jogador.upper(),
+            alinha_esquerda = True,
         )
-
         self._draw_barra_vida(
-            rect             = (self.largura // 2 + 70, 100, 260, 18),
-            hp               = cs.boss.hp,
-            hp_max           = cs.boss.max_hp,
-            nome             = cs.boss.name.upper(),
-            alinha_esquerda  = False,
+            rect            = (self.largura // 2 + 70, 58, 260, 18),   # era 100
+            hp              = cs.boss.hp,
+            hp_max          = cs.boss.max_hp,
+            nome            = cs.boss.name.upper(),
+            alinha_esquerda = False,
         )
 
         cor_combo = AMARELO if cs.combo > 0 else CINZA
         combo_txt = self.fonte_nome.render(f"COMBO  x{cs.combo}", True, cor_combo)
         self.tela.blit(combo_txt,
-                       (self.largura // 2 - combo_txt.get_width() // 2, 126))
+                    (self.largura // 2 - combo_txt.get_width() // 2, 82))
 
         nivel_txt = self.fonte_hud.render(f"NV {cs.nivel}", True, CINZA)
         self.tela.blit(nivel_txt,
-                       (self.largura // 2 - nivel_txt.get_width() // 2, 148))
+                    (self.largura // 2 - nivel_txt.get_width() // 2, 100))
 
     def _draw_barra_vida(self, rect, hp, hp_max, nome, alinha_esquerda):
         x, y, w, h = rect
@@ -241,7 +246,7 @@ class TelaBatalha(TelaBase):
         cor  = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
         larg = 320
         x    = self.largura // 2 - larg // 2
-        y    = 170
+        y    = 118  # era 170
 
         pygame.draw.rect(self.tela, (30, 20, 50), (x, y, larg, 8))
         pygame.draw.rect(self.tela, cor,           (x, y, int(larg * pct), 8))
@@ -254,12 +259,13 @@ class TelaBatalha(TelaBase):
     def _draw_personagens(self):
         cs = self.combat_state
 
+        # midbottom em Y_DIVISOR - 8 garante que o sprite termina antes da linha
         if cs.hero:
-            cs.hero.rect.midbottom = (180, 320)
+            cs.hero.rect.midbottom = (170, Y_DIVISOR - 8)
             cs.hero.draw(self.tela)
 
         if cs.boss:
-            cs.boss.rect.midbottom = (580, 320)
+            cs.boss.rect.midbottom = (590, Y_DIVISOR - 8)
             cs.boss.draw(self.tela)
 
     def _draw_pergunta(self, tempo):
@@ -267,14 +273,14 @@ class TelaBatalha(TelaBase):
         if not cs.questao:
             txt = self.fonte_menu.render("CARREGANDO QUESTÃO...", True, CINZA)
             self.tela.blit(txt,
-                           (self.largura // 2 - txt.get_width() // 2, 360))
+                        (self.largura // 2 - txt.get_width() // 2, Y_DIVISOR + 20))
             return
 
-        y_area = 280
+        y_area = Y_DIVISOR + 8          # era 280 — agora começa após o divisor
         pad    = 14
 
         fundo_rect = pygame.Rect(
-            30, y_area - pad, self.largura - 60, self.altura - y_area - 40
+            30, y_area - pad, self.largura - 60, self.altura - y_area - 30
         )
         pygame.draw.rect(self.tela, (10, 6, 22, 200), fundo_rect)
         pygame.draw.rect(self.tela, VERMELHO, fundo_rect, 2)
@@ -348,14 +354,14 @@ class TelaBatalha(TelaBase):
         alpha   = int(min(255, cs.mensagem_timer / TIMER_MENSAGEM * 255))
         overlay = pygame.Surface((self.largura, 44), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, max(0, alpha // 2)))
-        self.tela.blit(overlay, (0, 154))
+        self.tela.blit(overlay, (0, 108))   # era 154
 
         pulso = 0.7 + 0.3 * math.sin(tempo * 8)
         cor   = tuple(min(255, int(c * pulso)) for c in cs.mensagem_cor)
 
         txt = self.fonte_menu.render(cs.mensagem, True, cor)
         self.tela.blit(txt,
-                       (self.largura // 2 - txt.get_width() // 2, 162))
+                    (self.largura // 2 - txt.get_width() // 2, 116))  # era 162
 
     # ─────────────────────────────────────
     # UTILITÁRIOS DE RENDERIZAÇÃO

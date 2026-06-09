@@ -1,6 +1,7 @@
 # client/game_manager.py
 
 from viewer import TelaNome, TelaMenu, TelaBatalha, TelaTransicao, TelaGameOver
+from viewer.tela_rank import TelaRanking
 
 
 class GameManager:
@@ -64,9 +65,27 @@ class GameManager:
             )
 
         elif proximo == "ranking":
-            pass  # self.tela_atual = TelaRanking(self.tela)
+            self.tela_atual = TelaRanking(self.tela)
 
         elif proximo == "game_over":
             cs = self.tela_atual.combat_state
             pontuacao = cs.maior_combo * 10 + cs.nivel * 50
-            self.tela_atual = TelaGameOver(self.tela, pontuacao)
+            
+            #salvar no banco
+            from backend.database import salvar_pontuacao
+            try:
+                salvar_pontuacao(self.nome_jogador if self.nome_jogador else "Alquimista", pontuacao)
+            except Exception as e:
+                print(f"[SQLITE] Erro ao salvar pontuação: {e}")
+            
+            #gerar relatório via IA
+            from backend.ai_service import gerar_relatorio
+            try:
+                stats_reais = cs.get_stats_finais()
+                relatorio_ia = gerar_relatorio(stats_reais)
+            except Exception as e:
+                print(f"[GROQ] Erro ao gerar relatório: {e}")
+                relatorio_ia = "Seus erros foram guardados. Continue praticando para superar o próximo Boss!"
+                
+            #abre o Game Over passando os pontos e o texto da IA
+            self.tela_atual = TelaGameOver(self.tela, pontuacao, relatorio_ia)

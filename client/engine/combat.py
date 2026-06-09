@@ -60,6 +60,9 @@ class CombatState:
         self.maior_combo = 0
         self.temas_errados = []
         self._fila_questoes = {}
+        self.bosses_derrotados = 0
+        self.acertos = 0
+        self.erros = 0
 
         # Timer de resposta (regressivo)
         self.timer_resposta = TEMPO_RESPOSTA
@@ -205,6 +208,7 @@ class CombatState:
         self.aguardando_timer = TIMER_AGUARDAR
 
     def _processar_acerto(self):
+        self.acertos += 1
         self.combo += 1
         self.maior_combo = max(self.combo, self.maior_combo)
         dano = self._calcular_dano(DANO_BASE_HEROI, self.combo)
@@ -217,6 +221,7 @@ class CombatState:
         )
 
     def _processar_erro(self):
+        self.erros += 1
         dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
         self.hero.take_damage(dano)
         self.hero.set_state("damage")
@@ -230,6 +235,7 @@ class CombatState:
 
     def _processar_timeout(self):
         """Timer zerou — penalidade igual a um erro."""
+        self.erros += 1
         dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
         self.hero.take_damage(dano)
         self.hero.set_state("damage")
@@ -293,7 +299,10 @@ class CombatState:
 
     def get_stats_finais(self):
         return {
-            "maior_combo":   self.maior_combo,
+            "bosses": self.nivel - 1,
+            "certas": self.acertos,
+            "erradas": self.erros,
+            "maior_combo": self.maior_combo,
             "temas_errados": list(self.temas_errados),
         }
 

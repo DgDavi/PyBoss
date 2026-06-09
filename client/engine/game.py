@@ -55,7 +55,7 @@ class GameManager:
                 self.tela_atual = TelaBatalha(self.tela, self.nome_jogador)
 
         elif proximo == "transicao":
-            cs = self.tela_atual.combat_state        # ← atributo correto
+            cs = self.tela_atual.combat_state
             self.tela_atual = TelaTransicao(
                 tela         = self.tela,
                 boss_atual   = cs.boss_anterior,
@@ -70,22 +70,23 @@ class GameManager:
         elif proximo == "game_over":
             cs = self.tela_atual.combat_state
             pontuacao = cs.maior_combo * 10 + cs.nivel * 50
-            
-            #salvar no banco
+
+            # salvar no banco
             from backend.database import salvar_pontuacao
             try:
                 salvar_pontuacao(self.nome_jogador if self.nome_jogador else "Alquimista", pontuacao)
             except Exception as e:
                 print(f"[SQLITE] Erro ao salvar pontuação: {e}")
-            
-            #gerar relatório via IA
+
+            # stats sempre definido antes do try
+            stats_reais = cs.get_stats_finais()
+
+            # gerar relatório via IA
             from backend.ai_service import gerar_relatorio
             try:
-                stats_reais = cs.get_stats_finais()
                 relatorio_ia = gerar_relatorio(stats_reais)
             except Exception as e:
                 print(f"[GROQ] Erro ao gerar relatório: {e}")
                 relatorio_ia = "Seus erros foram guardados. Continue praticando para superar o próximo Boss!"
-                
-            #abre o Game Over passando os pontos e o texto da IA
-            self.tela_atual = TelaGameOver(self.tela, pontuacao, relatorio_ia)
+
+            self.tela_atual = TelaGameOver(self.tela, pontuacao, relatorio_ia, stats_reais)

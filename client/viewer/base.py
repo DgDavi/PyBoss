@@ -7,6 +7,8 @@ AMARELO = (240, 192, 40)
 CINZA = (80, 75, 100)
 VERMELHO = (200, 30, 30)
 ROXO = (60, 20, 100)
+VERDE = (0, 200, 80)
+BRANCO = (255, 255, 255)
 
 
 class TelaBase:

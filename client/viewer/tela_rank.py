@@ -13,7 +13,7 @@ class TelaRanking(TelaBase):
     def __init__(self, tela):
         super().__init__(tela)
         self.fonte_titulo  = pygame.font.SysFont("arialblack", 50)
-        self.fonte_sub     = pygame.font.SysFont("consolas", 24)
+        self.fonte_sub = pygame.font.SysFont("consolas", 24)
         self.fonte_pequena = pygame.font.SysFont("consolas", 18)
 
     def handle_event(self, evento):

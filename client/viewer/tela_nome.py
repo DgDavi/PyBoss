@@ -11,9 +11,9 @@ class TelaNome(TelaBase):
         super().__init__(tela)
         self.nome = ""
 
-        self.fonte_titulo    = pygame.font.SysFont("arialblack", 72)
+        self.fonte_titulo = pygame.font.SysFont("arialblack", 72)
         self.fonte_subtitulo = pygame.font.SysFont("arialblack", 22)
-        self.fonte_input     = pygame.font.SysFont("consolas", 28)
+        self.fonte_input = pygame.font.SysFont("consolas", 28)
 
     def handle_event(self, evento):
         if evento.type == pygame.KEYDOWN:
@@ -53,9 +53,9 @@ class TelaNome(TelaBase):
         self.tela.blit(prompt, (self.largura // 2 - prompt.get_width() // 2, 240))
 
         larg, alt = 380, 48
-        caixa     = pygame.Rect(self.largura // 2 - larg // 2, 272, larg, alt)
+        caixa = pygame.Rect(self.largura // 2 - larg // 2, 272, larg, alt)
         pygame.draw.rect(self.tela, (15, 10, 30), caixa)
-        pisca     = int(tempo * 3) % 2 == 0
+        pisca = int(tempo * 3) % 2 == 0
         cor_borda = AMARELO if pisca else AMARELO_ESC
         pygame.draw.rect(self.tela, cor_borda, caixa, 2)
 

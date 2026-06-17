@@ -330,7 +330,7 @@ class CombatState:
     def _carregar_questao(self):
         if not self.boss_data:
             return
-        tema        = self.boss_data.get("tema", "")
+        tema = self.boss_data.get("tema", "")
         dificuldade = self.nivel
 
         if self._fila_questoes.get(tema):

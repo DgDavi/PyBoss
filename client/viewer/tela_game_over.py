@@ -9,13 +9,13 @@ VERDE   = (60, 200, 80)
 class TelaGameOver(TelaBase):
     def __init__(self, tela, pontuacao=0, relatorio_ia="", stats=None):
         super().__init__(tela)
-        self.pontuacao   = pontuacao
+        self.pontuacao = pontuacao
         self.relatorio_ia = relatorio_ia
-        self.stats       = stats or {}
+        self.stats = stats or {}
 
         self.fonte_titulo  = pygame.font.SysFont("arialblack", 60)
         self.fonte_grande  = pygame.font.SysFont("arialblack", 26)
-        self.fonte_sub     = pygame.font.SysFont("consolas", 20)
+        self.fonte_sub = pygame.font.SysFont("consolas", 20)
         self.fonte_pequena = pygame.font.SysFont("consolas", 16)
 
     def handle_event(self, evento):

@@ -13,9 +13,9 @@ BRANCO = (255, 255, 255)
 
 class TelaBase:
     def __init__(self, tela):
-        self.tela    = tela
+        self.tela = tela
         self.largura = tela.get_width()
-        self.altura  = tela.get_height()
+        self.altura = tela.get_height()
         self.proximo = None  # sinaliza transição para o GameManager
 
         self.fonte_hud = pygame.font.SysFont("consolas", 16)

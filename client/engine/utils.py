@@ -1,5 +1,3 @@
-# client/engine/utils.py
-
 import unicodedata
 
 def normalizar_texto(texto: str) -> str:

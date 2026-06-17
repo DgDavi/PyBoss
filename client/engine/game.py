@@ -1,5 +1,3 @@
-# client/game_manager.py
-
 from viewer import TelaNome, TelaMenu, TelaBatalha, TelaTransicao, TelaGameOver
 from viewer.tela_rank import TelaRanking
 
@@ -41,10 +39,10 @@ class GameManager:
             if isinstance(self.tela_atual, TelaTransicao):
                 # Vindo da TelaTransicao — aproveita o boss já gerado
                 nova_tela = TelaBatalha(self.tela, self.nome_jogador)
-                cs = nova_tela.combat_state          # ← atributo correto
+                cs = nova_tela.combat_state
                 cs.boss_data = self.tela_atual.proximo_boss
-                cs.nivel     = self.tela_atual.nivel_atual   # mantém nível
-                cs.carregar_boss_dos_dados()          # ← método agora existe
+                cs.nivel = self.tela_atual.nivel_atual
+                cs.carregar_boss_dos_dados()
                 # Reinicia a fase de apresentação para o novo boss
                 from engine.combat import TIMER_APRESENTACAO
                 cs.fase = "apresentando"
@@ -57,11 +55,11 @@ class GameManager:
         elif proximo == "transicao":
             cs = self.tela_atual.combat_state
             self.tela_atual = TelaTransicao(
-                tela         = self.tela,
-                boss_atual   = cs.boss_anterior,
+                tela = self.tela,
+                boss_atual = cs.boss_anterior,
                 proximo_boss = cs.proximo_boss_data,
-                nivel_atual  = cs.nivel,
-                stats        = cs.get_stats_finais(),
+                nivel_atual = cs.nivel,
+                stats = cs.get_stats_finais(),
             )
 
         elif proximo == "ranking":

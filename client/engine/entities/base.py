@@ -1,7 +1,6 @@
 import os
 import pygame
 
-
 SPRITES_DIR = os.path.abspath(
 	os.path.join(os.path.dirname(__file__), "..", "..", "assets", "pyboss_sprites")
 )

@@ -25,7 +25,7 @@ TIMER_MENSAGEM  = 1.4
 TIMER_ANIMACAO  = 0.3
 TIMER_NOVO_BOSS = 1.2
 
-# Duração da tela de apresentação do boss (segundos)
+# Duração da tela de apresentação do boss
 TIMER_APRESENTACAO = 3.0
 
 # ── Mapa tema → classe do boss ───────────

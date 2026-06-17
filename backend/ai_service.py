@@ -6,7 +6,7 @@ from .config import GROQ_API_KEY
 client = Groq(api_key=GROQ_API_KEY)
 MODELO = "llama-3.3-70b-versatile"
 
-def chamar_ia(prompt: str) -> str | None:
+def chamar_ia(prompt: str, temperature: float = 1.1) -> str | None:
     try:
         resposta = client.chat.completions.create(
             model=MODELO,
@@ -79,18 +79,29 @@ def gerar_boss(nivel: int) -> dict:
     return boss
 
 
-def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
-    dificuldade = (
-        "fácil"   if nivel <= 2 else
-        "média"   if nivel <= 5 else
-        "difícil"
-    )
+def gerar_questao(tema: str, nivel: int, temas_errados: list = [], perguntas_anteriores: list = []) -> list:
+    
+    if nivel <= 2:
+        dificuldade = "fácil: conceitos básicos, sintaxe simples, sem pegadinhas"
+    elif nivel <= 4:
+        dificuldade = "média: uso combinado de conceitos, trechos de código com saída esperada"
+    elif nivel <= 6:
+        dificuldade = "difícil: comportamentos sutis, erros comuns, output de código não-óbvio"
+    else:
+        dificuldade = "expert: edge cases, performance, comportamentos internos do Python"
 
     contexto_erros = (
         f"O jogador tem dificuldade com: {', '.join(temas_errados)}. Priorize esses temas."
         if temas_errados else
         "Sem histórico de erros ainda."
     )
+
+    # Histórico para evitar repetição
+    if perguntas_anteriores:
+        historico = "PERGUNTAS JÁ FEITAS (não repita nem temas similares):\n" + \
+                    "\n".join(f"- {p}" for p in perguntas_anteriores[-10:])
+    else:
+        historico = "Sem perguntas anteriores."
 
     prompt = f"""
     Você é o gerador de questões do PyBoss, jogo educativo de Python.
@@ -100,12 +111,15 @@ def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
     Regras:
     - Tema principal: {tema}
     - Dificuldade: {dificuldade}
+    - Nível atual do jogador: {nivel} (adapte a complexidade proporcionalmente)
     - {contexto_erros}
+    - {historico}
+    - Varie o TIPO de pergunta: conceito teórico, leitura de código, saída esperada, identificação de erro, completar código
     - Código curto se necessário (máximo 5 linhas)
     - O campo "codigo" deve conter APENAS código Python incompleto ou neutro que contextualize a pergunta
     - NUNCA revele a resposta correta dentro do campo "codigo"
     - Se não precisar de código, use null
-    - 4 opções plausíveis por questão
+    - 4 opções plausíveis por questão (distratores realistas, não óbvios)
     - Explicação didática e direta
 
     Retorne APENAS o JSON abaixo, sem texto extra, sem ```json:
@@ -126,7 +140,7 @@ def gerar_questao(tema: str, nivel: int, temas_errados: list = []) -> dict:
     dados    = parsear_json(resposta)
 
     if dados and "questoes" in dados and dados["questoes"]:
-        return dados["questoes"]   # retorna lista inteira
+        return dados["questoes"]
 
     return [_questao_fallback(tema)]  # retorna lista também para consistência
 

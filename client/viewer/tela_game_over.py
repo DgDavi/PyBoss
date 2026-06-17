@@ -32,7 +32,7 @@ class TelaGameOver(TelaBase):
         self.desenhar_grade(tempo)
         self._draw_titulo(tempo)
         self._draw_pontuacao()
-        self._draw_painel_stats()      # ← novo
+        self._draw_painel_stats()
         self._draw_relatorio_ia()
         self._draw_instrucao(tempo)
         self.desenhar_borda()
@@ -60,7 +60,7 @@ class TelaGameOver(TelaBase):
         temas_errados = self.stats.get("temas_errados", [])
 
         cx = self.largura // 2
-        y  = 160  # ← era 150, subia em cima da pontuação
+        y  = 160
 
         # — Bosses derrotados —
         txt = self.fonte_sub.render(
@@ -90,7 +90,7 @@ class TelaGameOver(TelaBase):
             (cx - 200, y + 6),
             (cx + 200, y + 6), 1
         )
-        self._y_relatorio = y + 18   # passa a posição para o relatório
+        self._y_relatorio = y + 18
 
     def _draw_relatorio_ia(self):
         txt_tit = self.fonte_sub.render("AVALIAÇÃO DO ORÁCULO GROQ:", True, AMARELO)

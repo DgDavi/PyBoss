@@ -56,7 +56,7 @@ class TelaRanking(TelaBase):
             for i, jogador in enumerate(top_5):
                 nome, score = jogador
                 linha_texto = f"{i+1}º  {nome.ljust(20)} {score} PTS"
-                cor_texto = VERDE if i == 0 else BRANCO # Líder brilha em verde
+                cor_texto = VERDE if i == 0 else BRANCO
                 
                 txt_linha = self.fonte_pequena.render(linha_texto, True, cor_texto)
                 self.tela.blit(txt_linha, (x_box + 60, y_linha))

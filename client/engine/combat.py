@@ -17,6 +17,7 @@ from engine.utils import normalizar_texto
 
 # ── Constantes de combate ────────────────
 TEMPO_RESPOSTA  = 15.0   # segundos por pergunta
+TEMPO_EXTRA_SKILL = 10.0
 DANO_BASE_HEROI = 12
 DANO_BASE_BOSS  = 10
 TIMER_AGUARDAR  = 0.9    # segundos de feedback antes da próxima pergunta
@@ -60,6 +61,7 @@ class CombatState:
         self.maior_combo = 0
         self.temas_errados = []
         self._fila_questoes = {}
+        self.perguntas_feitas = []
         self.bosses_derrotados = 0
         self.acertos = 0
         self.erros = 0
@@ -170,8 +172,6 @@ class CombatState:
     # ─────────────────────────────────────
 
     def handle_input(self, acao):
-        """Processa input do jogador."""
-        # Na fase de apresentação, ENTER/SPACE adianta a contagem
         if self.fase == "apresentando":
             if acao == "confirm":
                 self.apresentacao_timer = 0.0
@@ -186,6 +186,12 @@ class CombatState:
             self.selecionado = (self.selecionado + 1) % len(self.opcoes)
         elif acao == "confirm":
             self._responder()
+        elif acao == "skill_dica":      # ← novo
+            self._usar_dica()
+        elif acao == "skill_tempo":     # ← novo
+            self._usar_tempo_extra()
+        elif acao == "skill_escudo":    # ← novo
+            self._usar_escudo()
 
     # ─────────────────────────────────────
     # LÓGICA DE COMBATE
@@ -211,6 +217,7 @@ class CombatState:
         self.acertos += 1
         self.combo += 1
         self.maior_combo = max(self.combo, self.maior_combo)
+        self.hero.ganhar_mana(10)   # ← novo
         dano = self._calcular_dano(DANO_BASE_HEROI, self.combo)
         self.boss.take_damage(dano)
         self.hero.set_state("attack")
@@ -222,14 +229,15 @@ class CombatState:
 
     def _processar_erro(self):
         self.erros += 1
-        dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
-        self.hero.take_damage(dano)
+        if self.hero.escudo_ativo:
+            self.hero.escudo_ativo = False
+            self._set_mensagem("🛡 ESCUDO ABSORVEU O DANO!", cor=(80, 160, 255))
+        else:
+            dano = self._calcular_dano(DANO_BASE_BOSS, self.combo)
+            self.hero.take_damage(dano)
+            self._set_mensagem(f"✗ ERRADO!  COMBO QUEBRADO  -{dano} HP", cor=(220, 20, 60))
         self.hero.set_state("damage")
         self.anim_timer = TIMER_ANIMACAO
-        self._set_mensagem(
-            f"✗ ERRADO!  COMBO QUEBRADO  -{dano} HP",
-            cor=(220, 20, 60)
-        )
         self.combo = 0
         self._registrar_erro_tema()
 
@@ -278,7 +286,7 @@ class CombatState:
         if not self.boss_data:
             self.carregar_boss()
             return
-        tema             = normalizar_texto(self.boss_data.get("tema", ""))
+        tema = normalizar_texto(self.boss_data.get("tema", ""))
         classe_boss      = MAPA_BOSS.get(tema, BossLoops)
         self.boss        = classe_boss()
         self.boss.name   = self.boss_data.get("nome",   self.boss.name)
@@ -288,10 +296,11 @@ class CombatState:
 
     def _proximo_boss(self):
         """Chamado quando boss atual morre — sinaliza transição."""
-        self.boss_anterior    = self.boss_data.copy()
-        self.nivel           += 1
+        self.boss_anterior = self.boss_data.copy()
+        self.nivel += 1
         self.proximo_boss_data = gerar_boss(self.nivel)
-        self.proximo          = "transicao"
+        self._fila_questoes = {}
+        self.proximo = "transicao"
 
     # ─────────────────────────────────────
     # UTILITÁRIOS
@@ -321,16 +330,18 @@ class CombatState:
     def _carregar_questao(self):
         if not self.boss_data:
             return
-
         tema        = self.boss_data.get("tema", "")
-        dificuldade = min(self.nivel, 5)
+        dificuldade = self.nivel
 
-        # Usa fila local se tiver questões guardadas
         if self._fila_questoes.get(tema):
             dados = self._fila_questoes[tema].pop(0)
         else:
-            resposta = gerar_questao(tema, dificuldade)
-            # gerar_questao agora deve retornar a lista inteira — veja abaixo
+            resposta = gerar_questao(
+                tema,
+                dificuldade,
+                temas_errados=self.temas_errados,
+                perguntas_anteriores=self.perguntas_feitas
+            )
             if not resposta:
                 self.questao = None
                 self.opcoes  = []
@@ -341,8 +352,39 @@ class CombatState:
             else:
                 dados = resposta
 
+        # Registra a pergunta no histórico global
+        if dados and "pergunta" in dados:
+            self.perguntas_feitas.append(dados["pergunta"])
+
         self.questao        = dados
         self.opcoes         = dados.get("opcoes", [])
         self.selecionado    = 0
         self.timer_resposta = TEMPO_RESPOSTA
         self.timer_esgotado = False
+
+    def _usar_dica(self):
+        if not self.questao or not self.opcoes:
+            return
+        if self.hero.usar_dica():
+            correta = str(self.questao.get("correta", "A")).strip()[:1].upper()
+            erradas = [i for i, op in enumerate(self.opcoes)
+                    if op.strip()[:1].upper() != correta]
+            remover = erradas[:2]
+            # Substitui as opções eliminadas por texto vazio
+            for i in remover:
+                self.opcoes[i] = f"{self.opcoes[i][:2]}~~eliminada~~"
+            if self.selecionado in remover:
+                self.selecionado = next(
+                    i for i in range(len(self.opcoes)) if i not in remover
+                )
+            self._set_mensagem("💡 DICA USADA — 2 opções eliminadas!", cor=(255, 200, 40))
+
+    def _usar_tempo_extra(self):
+        if self.hero.usar_tempo_extra():
+            self.timer_resposta = min(TEMPO_RESPOSTA, self.timer_resposta + TEMPO_EXTRA_SKILL)
+            self._set_mensagem(f"⏱ +{int(TEMPO_EXTRA_SKILL)}s ADICIONADOS!", cor=(40, 190, 190))
+
+    def _usar_escudo(self):
+        if self.hero.usar_escudo():
+            self._set_mensagem("🛡 ESCUDO ATIVADO — próximo erro sem dano!", cor=(80, 160, 255))
+        # Se já ativo, silencia (não gasta mana)

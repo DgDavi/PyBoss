@@ -14,6 +14,7 @@ AZUL_CLARO  = (80,  160, 255)
 VERM_ESCURO = (60,   10,  10)
 PRETO_SEMI  = (0,     0,   0, 160)
 Y_DIVISOR = 315
+AZUL_MANA = (60, 100, 220)
 
 class TelaBatalha(TelaBase):
 
@@ -54,6 +55,12 @@ class TelaBatalha(TelaBase):
                 self.combat_state.handle_input("down")
             elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self.combat_state.handle_input("confirm")
+            elif evento.key == pygame.K_q:          # ← novo
+                self.combat_state.handle_input("skill_dica")
+            elif evento.key == pygame.K_w:          # ← novo
+                self.combat_state.handle_input("skill_tempo")
+            elif evento.key == pygame.K_e:          # ← novo
+                self.combat_state.handle_input("skill_escudo")
 
     # ─────────────────────────────────────
     # UPDATE
@@ -168,7 +175,9 @@ class TelaBatalha(TelaBase):
     def _draw_batalha(self, tempo):
         self._draw_titulo(tempo)
         self._draw_hud()
-        self._draw_timer_bar()
+        self._draw_timer_bar()  
+        self._draw_mana_e_skills()
+        self._draw_skills_canto(tempo)
         self._draw_personagens()
         self._draw_pergunta(tempo)
         self._draw_mensagem(tempo)
@@ -261,11 +270,11 @@ class TelaBatalha(TelaBase):
 
         # midbottom em Y_DIVISOR - 8 garante que o sprite termina antes da linha
         if cs.hero:
-            cs.hero.rect.midbottom = (170, Y_DIVISOR - 8)
+            cs.hero.rect.midbottom = (190, Y_DIVISOR - 8)
             cs.hero.draw(self.tela)
 
         if cs.boss:
-            cs.boss.rect.midbottom = (590, Y_DIVISOR - 8)
+            cs.boss.rect.midbottom = (950, Y_DIVISOR - 8)
             cs.boss.draw(self.tela)
 
     def _draw_pergunta(self, tempo):
@@ -389,3 +398,149 @@ class TelaBatalha(TelaBase):
     def _altura_texto(self, texto, largura, fonte):
         linhas = self._quebrar_texto(texto, largura, fonte)
         return len(linhas) * fonte.get_height()
+
+    def _draw_orbe_mana(self, cx, cy, pct, tempo):
+        raio = 7
+        cor_base  = (40, 60, 140)
+        cor_cheia = (120, 200, 255)
+        cor = tuple(int(cor_base[i] + (cor_cheia[i] - cor_base[i]) * pct) for i in range(3))
+
+        # brilho pulsante quando a mana está cheia
+        if pct >= 0.999:
+            glow_raio = raio + 3 + int(2 * math.sin(tempo * 5))
+            glow_surf = pygame.Surface((glow_raio * 2 + 4, glow_raio * 2 + 4), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surf, (*cor_cheia, 90), (glow_raio + 2, glow_raio + 2), glow_raio)
+            self.tela.blit(glow_surf, (cx - glow_raio - 2, cy - glow_raio - 2))
+
+        pygame.draw.circle(self.tela, (10, 10, 28), (cx, cy), raio + 2)
+        pygame.draw.circle(self.tela, cor, (cx, cy), raio)
+        pygame.draw.circle(self.tela, (200, 220, 255), (cx, cy), raio, 1)
+
+    def _draw_mana_e_skills(self):
+        hero  = self.combat_state.hero
+        tempo = pygame.time.get_ticks() / 1000
+
+        larg_barra = 200
+        alt_barra  = 10
+        x_barra = self.largura // 2 - larg_barra // 2
+        y_barra = 136
+
+        pct_mana = 0 if hero.max_mana == 0 else hero.mana / hero.max_mana
+
+        cor_baixa = (40, 60, 140)
+        cor_alta  = (120, 200, 255)
+        cor_mana = tuple(int(cor_baixa[i] + (cor_alta[i] - cor_baixa[i]) * pct_mana) for i in range(3))
+
+        fundo_rect = pygame.Rect(x_barra, y_barra, larg_barra, alt_barra)
+        pygame.draw.rect(self.tela, (8, 8, 28), fundo_rect, border_radius=alt_barra // 2)
+
+        if pct_mana > 0:
+            preench_rect = pygame.Rect(x_barra, y_barra, max(alt_barra, int(larg_barra * pct_mana)), alt_barra)
+            pygame.draw.rect(self.tela, cor_mana, preench_rect, border_radius=alt_barra // 2)
+
+            # brilho superior pra dar sensação de volume
+            brilho_w = max(0, preench_rect.width - 4)
+            if brilho_w > 0:
+                brilho_surf = pygame.Surface((brilho_w, alt_barra // 3), pygame.SRCALPHA)
+                brilho_surf.fill((255, 255, 255, 60))
+                self.tela.blit(brilho_surf, (x_barra + 2, y_barra + 1))
+
+        # marcadores indicando o custo de cada skill
+        for custo in (20, 30, 40):
+            if 0 < custo < hero.max_mana:
+                x_marca = x_barra + int(larg_barra * (custo / hero.max_mana))
+                pygame.draw.line(self.tela, (15, 15, 40), (x_marca, y_barra), (x_marca, y_barra + alt_barra), 1)
+
+        # borda externa, com leve pulso quando a mana está no máximo
+        if pct_mana >= 0.999:
+            pulso = 0.6 + 0.4 * math.sin(tempo * 5)
+            cor_borda = tuple(int(c * pulso) for c in cor_alta)
+        else:
+            cor_borda = (80, 100, 200)
+        pygame.draw.rect(self.tela, cor_borda, fundo_rect, 2, border_radius=alt_barra // 2)
+
+        self._draw_orbe_mana(x_barra - 16, y_barra + alt_barra // 2, pct_mana, tempo)
+
+        mana_txt = self.fonte_hud.render(f"{hero.mana}/{hero.max_mana}", True, AZUL_CLARO)
+        self.tela.blit(mana_txt, (x_barra + larg_barra + 8, y_barra - 2))
+
+    def _draw_skills_canto(self, tempo):
+        hero = self.combat_state.hero
+        skills = [
+            ("Q", "DICA",   30, hero.mana >= 30, (255, 200, 40)),
+            ("W", "+TEMPO", 20, hero.mana >= 20, (40, 200, 200)),
+            ("E", "ESCUDO", 40, hero.mana >= 40 and not hero.escudo_ativo, (80, 160, 255)),
+        ]
+
+        largura_box = 118
+        altura_box  = 24
+        espaco      = 5
+        x = self.largura - largura_box - 16
+        y = 16
+
+        for tecla, nome, custo, disponivel, cor in skills:
+            rect = pygame.Rect(x, y, largura_box, altura_box)
+
+            if disponivel:
+                cor_fundo = tuple(int(c * 0.16) for c in cor)
+                cor_borda = cor
+                cor_texto = cor
+            else:
+                cor_fundo = (16, 14, 24)
+                cor_borda = (55, 55, 60)
+                cor_texto = (95, 95, 100)
+
+            pygame.draw.rect(self.tela, cor_fundo, rect, border_radius=4)
+            pygame.draw.rect(self.tela, cor_borda, rect, 1, border_radius=4)
+
+            label = self.fonte_hud.render(f"[{tecla}] {nome}", True, cor_texto)
+            self.tela.blit(label, (rect.x + 6, rect.y + (altura_box - label.get_height()) // 2))
+
+            custo_txt = self.fonte_hud.render(str(custo), True, cor_texto)
+            self.tela.blit(
+                custo_txt,
+                (rect.right - custo_txt.get_width() - 6, rect.y + (altura_box - custo_txt.get_height()) // 2),
+            )
+
+            y += altura_box + espaco
+
+        if hero.escudo_ativo:
+            escudo_txt = self.fonte_hud.render("🛡 ATIVO", True, AZUL_CLARO)
+            self.tela.blit(escudo_txt, (x + largura_box - escudo_txt.get_width(), y + 2))
+
+    def _draw_keycap(self, rect, tecla, disponivel, cor, tempo, seed=0):
+        if disponivel:
+            pulso      = 0.75 + 0.25 * math.sin(tempo * 3 + seed)
+            cor_topo   = tuple(int(min(255, c * 1.4 * pulso)) for c in cor)
+            cor_corpo  = tuple(int(c * 0.5) for c in cor)
+            cor_sombra = tuple(int(c * 0.22) for c in cor)
+            cor_letra  = (12, 12, 16)
+            cor_borda  = cor
+
+            # halo suave em volta da tecla pronta
+            halo_raio = max(rect.width, rect.height) // 2 + 6
+            halo_surf = pygame.Surface((halo_raio * 2, halo_raio * 2), pygame.SRCALPHA)
+            pygame.draw.circle(halo_surf, (*cor, 45), (halo_raio, halo_raio), halo_raio)
+            self.tela.blit(halo_surf, (rect.centerx - halo_raio, rect.centery - halo_raio))
+        else:
+            cor_topo   = (60, 60, 68)
+            cor_corpo  = (35, 35, 42)
+            cor_sombra = (18, 18, 22)
+            cor_letra  = (95, 95, 100)
+            cor_borda  = (55, 55, 60)
+
+        # sombra projetada (dá sensação de tecla "flutuando")
+        pygame.draw.rect(self.tela, cor_sombra, rect.move(0, 3), border_radius=7)
+
+        # corpo da tecla
+        pygame.draw.rect(self.tela, cor_corpo, rect, border_radius=7)
+
+        # relevo claro na parte de cima, simulando luz incidindo no keycap
+        topo_rect = pygame.Rect(rect.x + 3, rect.y + 3, rect.width - 6, int(rect.height * 0.5))
+        pygame.draw.rect(self.tela, cor_topo, topo_rect, border_radius=5)
+
+        pygame.draw.rect(self.tela, cor_borda, rect, 2, border_radius=7)
+
+        letra = self.fonte_menu.render(tecla, True, cor_letra)
+        self.tela.blit(letra, (rect.centerx - letra.get_width() // 2,
+                                rect.centery - letra.get_height() // 2 - 1))

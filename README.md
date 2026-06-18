@@ -359,4 +359,6 @@ https://docs.google.com/document/d/1G9rIZBDOUr5qKOxBlUi7RTlVNrHB8mSNWeCs6BNneoU/
 
 Lucas Augusto:
 
+https://docs.google.com/document/d/1JzRC_RFp1SfL7hLKvyMu6KoPY5HReUdtbVpHYiMYkKM/edit?tab=t.0
+
 

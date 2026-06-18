@@ -15,16 +15,16 @@
 # 📸 Screenshots
 
 ## Menu Principal
-![Menu Principal](menu.png)
+![Menu Principal](client/assets/images/menu.png)
 
 ## Batalha Contra um Boss
-![Batalha Contra um Boss](telabatalha.png)
+![Batalha Contra um Boss](client/assets/images/telabatalha.png)
 
 ## Tela de Transição
-![Tela de Transição](telatransicao.png)
+![Tela de Transição](client/assets/images/telatransicao.png)
 
 ## Relatório Inteligente
-![Relatório Inteligente](relatoriointeligente.png)
+![Relatório Inteligente](client/assets/images/relatoriointeligente.png)
 
 # 🎯 Sobre o Jogo
 

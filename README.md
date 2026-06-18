@@ -350,3 +350,7 @@ PyBoss foi criado para:
 - Pessoas que preferem aprender através da prática
 
 ---
+
+# Relatório 
+
+https://docs.google.com/document/d/1G9rIZBDOUr5qKOxBlUi7RTlVNrHB8mSNWeCs6BNneoU/edit?usp=drivesdk

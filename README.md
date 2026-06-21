@@ -15,12 +15,16 @@
 # 📸 Screenshots
 
 ## Menu Principal
+![Menu Principal](client/assets/images/menu.png)
 
 ## Batalha Contra um Boss
+![Batalha Contra um Boss](client/assets/images/telabatalha.png)
 
 ## Tela de Transição
+![Tela de Transição](client/assets/images/telatransicao.png)
 
 ## Relatório Inteligente
+![Relatório Inteligente](client/assets/images/relatoriointeligente.png)
 
 # 🎯 Sobre o Jogo
 
@@ -346,3 +350,15 @@ PyBoss foi criado para:
 - Pessoas que preferem aprender através da prática
 
 ---
+
+# Relatório 
+
+Davi Gomes:
+
+https://docs.google.com/document/d/1G9rIZBDOUr5qKOxBlUi7RTlVNrHB8mSNWeCs6BNneoU/edit?usp=drivesdk
+
+Lucas Augusto:
+
+https://docs.google.com/document/d/1JzRC_RFp1SfL7hLKvyMu6KoPY5HReUdtbVpHYiMYkKM/edit?tab=t.0
+
+

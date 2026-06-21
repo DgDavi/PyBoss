@@ -42,11 +42,16 @@ class TelaNome(TelaBase):
         self.tela.blit(sombra, (self.largura // 2 - sombra.get_width() // 2 + 4, 84))
         titulo = self.fonte_titulo.render("PyBoss", True, cor)
         self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, 80))
+        
+        
         sub = self.fonte_subtitulo.render("— ALQUIMIA ARCANA —", True, CINZA)
-        self.tela.blit(sub, (self.largura // 2 - sub.get_width() // 2, 162))
+        self.tela.blit(sub, (self.largura // 2 - sub.get_width() // 2, 175))
+        
+        
         pygame.draw.line(self.tela, VERMELHO,
-                         (self.largura // 2 - 180, 192),
-                         (self.largura // 2 + 180, 192), 2)
+                         (self.largura // 2 - 180, 215),
+                         (self.largura // 2 + 180, 215), 2)
+        
 
     def _input(self, tempo):
         prompt = self.fonte_hud.render("INSIRA SEU NOME, ALQUIMISTA:", True, BRANCO)

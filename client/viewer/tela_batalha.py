@@ -149,15 +149,18 @@ class TelaBatalha(TelaBase):
         if not cs.boss:
             return
 
-        self._draw_barra_vida((self.largura // 2 - 330, 58, 260, 18), cs.hero.hp, cs.hero.max_hp, self.nome_jogador.upper(), True)
-        self._draw_barra_vida((self.largura // 2 + 70, 58, 260, 18), cs.boss.hp, cs.boss.max_hp, cs.boss.name.upper(), False)
+       
+        self._draw_barra_vida((self.largura // 2 - 420, 48, 260, 18), cs.hero.hp, cs.hero.max_hp, self.nome_jogador.upper(), True)
+        self._draw_barra_vida((self.largura // 2 + 160, 48, 260, 18), cs.boss.hp, cs.boss.max_hp, cs.boss.name.upper(), False)
 
+        
         cor_combo = AMARELO if cs.combo > 0 else CINZA
         combo_txt = self.fonte_nome.render(f"COMBO x{cs.combo}", True, cor_combo)
-        self.tela.blit(combo_txt, (self.largura // 2 - combo_txt.get_width() // 2, 82))
+        self.tela.blit(combo_txt, (self.largura // 2 - combo_txt.get_width() // 2, 54))
 
+        
         nivel_txt = self.fonte_hud.render(f"NV {cs.nivel}", True, CINZA)
-        self.tela.blit(nivel_txt, (self.largura // 2 - nivel_txt.get_width() // 2, 100))
+        self.tela.blit(nivel_txt, (self.largura // 2 - nivel_txt.get_width() // 2, 76))
 
     def _draw_barra_vida(self, rect, hp, hp_max, nome, alinha_esquerda):
         """Renderiza uma barra de vida genérica."""
@@ -184,16 +187,20 @@ class TelaBatalha(TelaBase):
         cor = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
         larg = 320
         x = self.largura // 2 - larg // 2
-        y = 118
+        
+        
+        y = 104
 
         pygame.draw.rect(self.tela, (30, 20, 50), (x, y, larg, 8))
         pygame.draw.rect(self.tela, cor, (x, y, int(larg * pct), 8))
         pygame.draw.rect(self.tela, CINZA, (x, y, larg, 8), 1)
 
+        # Contador da direita para a esquerda
         seg = math.ceil(cs.timer_resposta)
         txt = self.fonte_hud.render(f"{seg}s", True, cor)
-        self.tela.blit(txt, (x + larg + 6, y - 2))
-
+        self.tela.blit(txt, (x - txt.get_width() - 10, y - 2))
+    
+    
     def _draw_personagens(self):
         """Posiciona e desenha os sprites do herói e do chefe."""
         cs = self.combat_state

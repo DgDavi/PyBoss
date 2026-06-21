@@ -91,6 +91,17 @@ class CombatState:
         self.boss_anterior = None
         self.proximo_boss_data = None
 
+        #Release 2: itens da cultura pernambucana, que dão algum bônus para o jogador
+        self.itens_pernambucanos = [
+            {"nome": "Bolo de Rolo", "tipo": "cura", "valor": 15, "msg": "Você comeu um bolo de rolo legítimo e ganhou +15 HP!"},
+            {"nome": "Cartola", "tipo": "cura", "valor": 10, "msg": "Banana com queijo assado e canela! Ganhou +10 HP!"},
+            {"nome": "Tapioca da Sé", "tipo": "cura", "valor": 25, "msg": "Subiu o Alto da Sé e comeu uma tapioca! Recuperou +25 HP!"},
+            {"nome": "Gin de 10", "tipo": "duplica_dano", "valor": True, "msg": "Gin de 10! Seu próximo ataque dará o DOBRO de dano!"},
+            {"nome": "Axé", "tipo": "tempo_extra", "valor": 5, "msg": "Um gole de Axé de Olinda! +5 segundos na próxima rodada!"}
+        ]
+        self.proximo_dano_duplicado = False
+        self.tempo_bonus_proxima_rodada = 0.0
+
         # A questão só é carregada quando a apresentação terminar
 
         if boss_data:
@@ -217,15 +228,30 @@ class CombatState:
         self.acertos += 1
         self.combo += 1
         self.maior_combo = max(self.combo, self.maior_combo)
-        self.hero.ganhar_mana(10)   # ← novo
+        self.hero.ganhar_mana(10)   
+        
         dano = self._calcular_dano(DANO_BASE_HEROI, self.combo)
         self.boss.take_damage(dano)
         self.hero.set_state("attack")
         self.anim_timer = TIMER_ANIMACAO
-        self._set_mensagem(
-            f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO",
-            cor=(40, 190, 80)
-        )
+        
+        txt_feedback = f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO"
+        cor_feedback = (40, 190, 80)
+        
+        if random.random() < 0.30:
+            item = random.choice(self.itens_pernambucanos)
+            txt_feedback = f"🎁 {item['msg']}" 
+            cor_feedback = (255, 105, 180) 
+            
+            if item["tipo"] == "cura":
+                self.hero.hp = min(self.hero.max_hp, self.hero.hp + item["valor"])
+            elif item["tipo"] == "duplica_dano":
+                self.proximo_dano_duplicado = True
+            elif item["tipo"] == "tempo_extra":
+                self.tempo_bonus_proxima_rodada = item["valor"]
+                
+        self._set_mensagem(txt_feedback, cor=cor_feedback)
+        
 
     def _processar_erro(self):
         self.erros += 1
@@ -261,7 +287,13 @@ class CombatState:
         bonus = combo * 4
         nivel = max(0, self.nivel - 1)
         variacao = random.randint(0, 2)
-        return base + bonus + (nivel * 2) + variacao
+        dano_final = base + bonus + (nivel * 2) + variacao
+        
+        if self.proximo_dano_duplicado:
+            dano_final *= 2
+            self.proximo_dano_duplicado = False 
+            
+        return dano_final
 
     # ─────────────────────────────────────
     # CARREGAMENTO
@@ -359,7 +391,8 @@ class CombatState:
         self.questao        = dados
         self.opcoes         = dados.get("opcoes", [])
         self.selecionado    = 0
-        self.timer_resposta = TEMPO_RESPOSTA
+        self.timer_resposta = TEMPO_RESPOSTA + self.tempo_bonus_proxima_rodada
+        self.tempo_bonus_proxima_rodada = 0.0
         self.timer_esgotado = False
 
     def _usar_dica(self):

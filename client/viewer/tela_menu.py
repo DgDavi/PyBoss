@@ -40,17 +40,22 @@ class TelaMenu(TelaBase):
         pulso  = 0.85 + 0.15 * math.sin(tempo * 3)
         cor    = tuple(int(c * pulso) for c in AMARELO)
         sombra = self.fonte_titulo.render("PyBoss", True, (60, 30, 0))
-        self.tela.blit(sombra, (self.largura // 2 - sombra.get_width() // 2 + 3, 73))
+        
+       
+        self.tela.blit(sombra, (self.largura // 2 - sombra.get_width() // 2 + 3, 63))
         titulo = self.fonte_titulo.render("PyBoss", True, cor)
-        self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, 70))
+       
+        self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, 60))
+        
+        
         pygame.draw.line(self.tela, VERMELHO,
-                         (self.largura // 2 - 180, 148),
-                         (self.largura // 2 + 180, 148), 2)
+                         (self.largura // 2 - 180, 156),
+                         (self.largura // 2 + 180, 156), 2)
 
     def _saudacao(self):
         saudacao = self.fonte_nome.render(
             f"BEM-VINDO, {self.nome_jogador.upper()}!", True, BRANCO)
-        self.tela.blit(saudacao, (self.largura // 2 - saudacao.get_width() // 2, 165))
+        self.tela.blit(saudacao, (self.largura // 2 - saudacao.get_width() // 2, 176))
 
     def _menu(self, tempo):
         y_inicio = 260

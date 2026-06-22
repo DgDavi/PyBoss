@@ -276,19 +276,22 @@ class CombatState:
         self.anim_timer = TIMER_ANIMACAO
         
         
-        #Itens dropavéis
+        txt_feedback = f"✓ CORRETO! COMBO x{self.combo}  +{dano} DANO"
+        self._set_mensagem(txt_feedback, cor=(40, 190, 80))
+        self.aguardando = True
+        self.aguardando_timer = TIMER_AGUARDAR
+        
+        
         if random.random() < 0.30:
             if len(self.inventario) < 5:
                 item = random.choice(self.itens_pernambucanos)
                 self.inventario.append(item)
                 self.item_dropado = item
-                self.fase = "popup_drop"  # Abre o popup dizendo que o item foi dropado
+                self.fase = "popup_drop"  
             else:
-                # Inventário cheio, dá o feedback normal de acerto
+                # Se o inventário estiver cheio, adiciona o aviso no texto
                 txt_feedback = f"✓ CORRETO! INVENTÁRIO CHEIO  +{dano} DANO"
                 self._set_mensagem(txt_feedback, cor=(40, 190, 80))
-                self.aguardando = True
-                self.aguardando_timer = TIMER_AGUARDAR
         
 
     def _processar_erro(self):

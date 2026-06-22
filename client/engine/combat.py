@@ -277,7 +277,7 @@ class CombatState:
         
         
         #Itens dropavéis
-        if random.random() < 1.0:
+        if random.random() < 0.30:
             if len(self.inventario) < 5:
                 item = random.choice(self.itens_pernambucanos)
                 self.inventario.append(item)

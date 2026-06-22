@@ -94,10 +94,10 @@ class CombatState:
         #Release 2: itens da cultura pernambucana, que dão algum bônus para o jogador
         self.itens_pernambucanos = [
             {"nome": "Bolo de Rolo", "tipo": "cura", "valor": 15, "msg": "Você comeu um bolo de rolo legítimo e ganhou +15 HP!"},
-            {"nome": "Cartola", "tipo": "cura", "valor": 10, "msg": "Banana com queijo assado e canela! Ganhou +10 HP!"},
-            {"nome": "Tapioca da Sé", "tipo": "cura", "valor": 25, "msg": "Subiu o Alto da Sé e comeu uma tapioca! Recuperou +25 HP!"},
+            {"nome": "Cartola", "tipo": "cura", "valor": 10, "msg": "Cartola! Banana com queijo assado e canela! Ganhou +10 HP!"},
+            {"nome": "Tapioca da Sé", "tipo": "cura", "valor": 25, "msg": "Você subiu o Alto da Sé e comeu uma tapioca! Recuperou +25 HP!"},
             {"nome": "Gin de 10", "tipo": "duplica_dano", "valor": True, "msg": "Gin de 10! Seu próximo ataque dará o DOBRO de dano!"},
-            {"nome": "Axé", "tipo": "tempo_extra", "valor": 5, "msg": "Um gole de Axé de Olinda! +5 segundos na próxima rodada!"}
+            {"nome": "Axé", "tipo": "tempo_extra", "valor": 5, "msg": "Um gole de Axé de Olinda! +5 segundos extras na próxima rodada!"}
         ]
         self.proximo_dano_duplicado = False
         self.tempo_bonus_proxima_rodada = 0.0
@@ -110,6 +110,9 @@ class CombatState:
         else:
             self.carregar_boss()
 
+        # Guarda o dicionário do item que acabou de dropar
+        self.item_dropado = None 
+
     # ─────────────────────────────────────
     # UPDATE
     # ─────────────────────────────────────
@@ -119,6 +122,9 @@ class CombatState:
 
         if self.fase == "apresentando":
             self._atualizar_apresentacao(dt)
+        elif self.fase == "popup_drop":
+            # Quando estiver no popup, o jogo fica travado aqui
+            pass
         else:
             self._atualizar_timer_resposta(dt)
             self._atualizar_animacao(dt)
@@ -188,6 +194,15 @@ class CombatState:
                 self.apresentacao_timer = 0.0
             return
 
+        # SE ESTIVER NO POPUP DE DROP: Só aceita o botão de confirmar para fechar
+        if self.fase == "popup_drop":
+            if acao == "confirm":
+                self.fase = "batalha"
+                self.item_dropado = None
+                self.aguardando = True
+                self.aguardando_timer = TIMER_AGUARDAR
+            return
+
         if self.aguardando or self.mensagem_timer > 0 or not self.questao:
             return
 
@@ -197,11 +212,11 @@ class CombatState:
             self.selecionado = (self.selecionado + 1) % len(self.opcoes)
         elif acao == "confirm":
             self._responder()
-        elif acao == "skill_dica":      # ← novo
+        elif acao == "skill_dica":
             self._usar_dica()
-        elif acao == "skill_tempo":     # ← novo
+        elif acao == "skill_tempo":
             self._usar_tempo_extra()
-        elif acao == "skill_escudo":    # ← novo
+        elif acao == "skill_escudo":
             self._usar_escudo()
 
     # ─────────────────────────────────────
@@ -235,22 +250,26 @@ class CombatState:
         self.hero.set_state("attack")
         self.anim_timer = TIMER_ANIMACAO
         
-        txt_feedback = f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO"
-        cor_feedback = (40, 190, 80)
         
         if random.random() < 0.30:
             item = random.choice(self.itens_pernambucanos)
-            txt_feedback = f"🎁 {item['msg']}" 
-            cor_feedback = (255, 105, 180) 
+            self.item_dropado = item
+            #Ativar o popup
+            self.fase = "popup_drop"  
             
+            # Aplica os bônus do item dropado
             if item["tipo"] == "cura":
                 self.hero.hp = min(self.hero.max_hp, self.hero.hp + item["valor"])
             elif item["tipo"] == "duplica_dano":
                 self.proximo_dano_duplicado = True
             elif item["tipo"] == "tempo_extra":
                 self.tempo_bonus_proxima_rodada = item["valor"]
-                
-        self._set_mensagem(txt_feedback, cor=cor_feedback)
+        else:
+            # Feedback normal se não dropar nada
+            txt_feedback = f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO"
+            self._set_mensagem(txt_feedback, cor=(40, 190, 80))
+            self.aguardando = True
+            self.aguardando_timer = TIMER_AGUARDAR
         
 
     def _processar_erro(self):

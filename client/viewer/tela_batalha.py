@@ -34,6 +34,31 @@ class TelaBatalha(TelaBase):
         self.fonte_apres_sub = pygame.font.SysFont("consolas",  18)
         
         self.combat_state = CombatState(nome_jogador, boss_data=boss_data, nivel=nivel)
+        #mapeamento das imagens dos itens
+        self.imagens_itens = {}
+        tamanho_item = (48, 48)  
+        
+        # Caminhos atualizados para a pasta 'itens'
+        mapeamento_arquivos = {
+            "gin": "client/assets/itens/ginde10.png",
+            "tapioca": "client/assets/itens/tapioca.png",
+            "bolo": "client/assets/itens/boloderolo.png",
+            "axe": "client/assets/itens/axe.png",
+            "cartola": "client/assets/itens/cartola.png"
+        }
+        
+        print("\n--- INICIANDO CARREGAMENTO DE ITENS ---")
+        for chave, caminho in mapeamento_arquivos.items():
+            try:
+                # convert_alpha() para manter a transparência da pixel art
+                img_original = pygame.image.load(caminho).convert_alpha()
+                self.imagens_itens[chave] = pygame.transform.scale(img_original, tamanho_item)
+                print(f"[SUCESSO] Imagem do {chave} carregada!")
+            except Exception as e:
+                # Se der ruim, o terminal avisa o motivo exato
+                print(f"[ERRO] Falha na imagem {chave}: {e}")
+                self.imagens_itens[chave] = None
+        print("---------------------------------------\n")
 
     @property
     def proximo(self):
@@ -68,7 +93,7 @@ class TelaBatalha(TelaBase):
         self.combat_state.update(dt)
 
     def draw(self):
-        """Renderiza os elementos da tela de batalha."""
+        """Renderiza os elements da tela de batalha."""
         tempo = pygame.time.get_ticks() / 1000
         self.desenhar_degradê()
         self.desenhar_grade(tempo)
@@ -77,6 +102,10 @@ class TelaBatalha(TelaBase):
             self._draw_apresentacao(tempo)
         else:
             self._draw_batalha(tempo)
+
+        # Se estiver na fase de popup de recompensa, desenha por cima de tudo
+        if self.combat_state.fase == "popup_drop":
+            self._draw_popup_drop(tempo)
 
         self.desenhar_rodape(tempo)
         self.desenhar_borda()
@@ -149,16 +178,13 @@ class TelaBatalha(TelaBase):
         if not cs.boss:
             return
 
-       
         self._draw_barra_vida((self.largura // 2 - 420, 48, 260, 18), cs.hero.hp, cs.hero.max_hp, self.nome_jogador.upper(), True)
         self._draw_barra_vida((self.largura // 2 + 160, 48, 260, 18), cs.boss.hp, cs.boss.max_hp, cs.boss.name.upper(), False)
 
-        
         cor_combo = AMARELO if cs.combo > 0 else CINZA
         combo_txt = self.fonte_nome.render(f"COMBO x{cs.combo}", True, cor_combo)
         self.tela.blit(combo_txt, (self.largura // 2 - combo_txt.get_width() // 2, 54))
 
-        
         nivel_txt = self.fonte_hud.render(f"NV {cs.nivel}", True, CINZA)
         self.tela.blit(nivel_txt, (self.largura // 2 - nivel_txt.get_width() // 2, 76))
 
@@ -187,19 +213,15 @@ class TelaBatalha(TelaBase):
         cor = VERDE if pct > 0.5 else LARANJA if pct > 0.25 else VERMELHO
         larg = 320
         x = self.largura // 2 - larg // 2
-        
-        
         y = 104
 
         pygame.draw.rect(self.tela, (30, 20, 50), (x, y, larg, 8))
         pygame.draw.rect(self.tela, cor, (x, y, int(larg * pct), 8))
         pygame.draw.rect(self.tela, CINZA, (x, y, larg, 8), 1)
 
-        # Contador da direita para a esquerda
         seg = math.ceil(cs.timer_resposta)
         txt = self.fonte_hud.render(f"{seg}s", True, cor)
         self.tela.blit(txt, (x - txt.get_width() - 10, y - 2))
-    
     
     def _draw_personagens(self):
         """Posiciona e desenha os sprites do herói e do chefe."""
@@ -268,7 +290,7 @@ class TelaBatalha(TelaBase):
         self.tela.blit(inst, (self.largura // 2 - inst.get_width() // 2, self.altura - 70))
 
     def _draw_mensagem(self, tempo):
-        """Exibe mensagens temporárias de feedback na tela."""
+        """Exibe mensagens temporárias normais de feedback na tela."""
         cs = self.combat_state
         if not cs.mensagem or cs.mensagem_timer <= 0:
             return
@@ -282,6 +304,62 @@ class TelaBatalha(TelaBase):
         cor = tuple(min(255, int(c * pulso)) for c in cs.mensagem_cor)
         txt = self.fonte_menu.render(cs.mensagem, True, cor)
         self.tela.blit(txt, (self.largura // 2 - txt.get_width() // 2, 116))
+
+    def _draw_popup_drop(self, tempo):
+        """Desenha um popup contendo o item dropado de recompensa."""
+        # Tenta pegar o item armazenado no CombatState
+        item = getattr(self.combat_state, "item_dropado", None)
+        if not item:
+            return
+
+        #Configurações da Janela Centralizada
+        largura_p, altura_p = 500, 240
+        x_p = (self.largura // 2) - (largura_p // 2)
+        y_p = (self.altura // 2) - (altura_p // 2) - 40
+
+        # Fundo semi-transparente escuro
+        popup_surface = pygame.Surface((largura_p, altura_p), pygame.SRCALPHA)
+        popup_surface.fill((12, 8, 24, 235)) 
+        self.tela.blit(popup_surface, (x_p, y_p))
+        
+        # Borda com efeito pulsar neon rosa/amarelo
+        pulso_borda = abs(math.sin(tempo * 3))
+        cor_borda = (int(255 * pulso_borda), 105, int(180 + 75 * (1 - pulso_borda)))
+        pygame.draw.rect(self.tela, cor_borda, (x_p, y_p, largura_p, altura_p), 3, border_radius=6)
+        
+        #Identifica e amplifica a Pixel Art do Item
+        nome_item_min = item.get("nome", "").lower()
+        img_item = None
+        if "gin" in nome_item_min:
+            img_item = self.imagens_itens.get("gin")
+        elif "tapioca" in nome_item_min:
+            img_item = self.imagens_itens.get("tapioca")
+        elif "bolo" in nome_item_min or "rolo" in nome_item_min:
+            img_item = self.imagens_itens.get("bolo")
+        elif "axe" in nome_item_min or "axé" in nome_item_min:
+            img_item = self.imagens_itens.get("axe")
+        elif "cartola" in nome_item_min:
+            img_item = self.imagens_itens.get("cartola")
+
+        if img_item:
+            # altera a escala da imagem de 48x48 para 80x80 para destacar o pixel art no popup
+            img_grande = pygame.transform.scale(img_item, (80, 80))
+            x_img = (self.largura // 2) - (img_grande.get_width() // 2)
+            self.tela.blit(img_grande, (x_img, y_p + 20))
+
+        #Renderização de Textos
+        # Título Dourado
+        txt_titulo = self.fonte_nome.render("🎁 RECOMPENSA OBTIDA!", True, (255, 215, 0))
+        self.tela.blit(txt_titulo, (self.largura // 2 - txt_titulo.get_width() // 2, y_p + 115))
+
+        # Mensagem do drop
+        msg_drop = item.get("msg", "")
+        self._desenhar_texto(msg_drop, x_p + 20, y_p + 145, largura_p - 40, self.fonte_codigo, BRANCO)
+
+        # Comando para fechar piscando suavemente
+        pulso_txt = 150 + int(105 * abs(math.sin(tempo * 4)))
+        txt_sub = self.fonte_apres_sub.render("[ Pressione ENTER para continuar ]", True, (pulso_txt, pulso_txt, pulso_txt))
+        self.tela.blit(txt_sub, (self.largura // 2 - txt_sub.get_width() // 2, y_p + altura_p - 30))
 
     def _desenhar_texto(self, texto, x, y, largura, fonte, cor):
         """Desenha um bloco de texto com quebra de linha automática."""
@@ -320,7 +398,7 @@ class TelaBatalha(TelaBase):
             glow_raio = raio + 3 + int(2 * math.sin(tempo * 5))
             glow_surf = pygame.Surface((glow_raio * 2 + 4, glow_raio * 2 + 4), pygame.SRCALPHA)
             pygame.draw.circle(glow_surf, (*cor_cheia, 90), (glow_raio + 2, glow_raio + 2), glow_raio)
-            self.tela.blit(glow_surf, (cx - glow_raio - 2, cy - glow_raio - 2))
+            self.tela.blit(halo_surf, (cx - glow_raio - 2, cy - glow_raio - 2))
 
         pygame.draw.circle(self.tela, (10, 10, 28), (cx, cy), raio + 2)
         pygame.draw.circle(self.tela, cor, (cx, cy), raio)

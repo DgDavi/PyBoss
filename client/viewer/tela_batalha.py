@@ -72,6 +72,21 @@ class TelaBatalha(TelaBase):
     def handle_event(self, evento):
         """Processa eventos de teclado para controle do combate."""
         if evento.type == pygame.KEYDOWN:
+            # Captura a tecla TAB para abrir/fechar o inventário em qualquer momento
+            if evento.key == pygame.K_TAB:
+                self.combat_state.handle_input("toggle_inventario")
+                return
+
+            # Controles específicos se o inventário estiver aberto
+            if self.combat_state.fase == "inventario":
+                if evento.key == pygame.K_LEFT:
+                    self.combat_state.handle_input("left")
+                elif evento.key == pygame.K_RIGHT:
+                    self.combat_state.handle_input("right")
+                elif evento.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    self.combat_state.handle_input("confirm")
+                return
+
             if evento.key == pygame.K_UP:
                 self.combat_state.handle_input("up")
             elif evento.key == pygame.K_DOWN:
@@ -84,7 +99,8 @@ class TelaBatalha(TelaBase):
                 self.combat_state.handle_input("skill_tempo")
             elif evento.key == pygame.K_e:
                 self.combat_state.handle_input("skill_escudo")
-
+    
+    
     def update(self):
         """Atualiza a lógica do estado de combate."""
         agora = pygame.time.get_ticks()
@@ -106,6 +122,10 @@ class TelaBatalha(TelaBase):
         # Se estiver na fase de popup de recompensa, desenha por cima de tudo
         if self.combat_state.fase == "popup_drop":
             self._draw_popup_drop(tempo)
+
+        # Se o invetário estiver ativo, desenha o painel por cima da batalha também
+        if self.combat_state.fase == "inventario":
+            self._draw_popup_inventario(tempo)
 
         self.desenhar_rodape(tempo)
         self.desenhar_borda()
@@ -286,7 +306,8 @@ class TelaBatalha(TelaBase):
             txt = self.fonte_pergunta.render(opcao, True, cor_texto)
             self.tela.blit(txt, (fundo_rect.x + 26, y))
 
-        inst = self.fonte_hud.render("↑↓ NAVEGAR  ENTER CONFIRMAR", True, CINZA)
+       # Linha atualizada com o comando do Inventário mantendo o padrão de espaçamento
+        inst = self.fonte_hud.render("↑↓ NAVEGAR   ENTER CONFIRMAR   TAB INVENTÁRIO", True, CINZA)
         self.tela.blit(inst, (self.largura // 2 - inst.get_width() // 2, self.altura - 70))
 
     def _draw_mensagem(self, tempo):
@@ -513,3 +534,104 @@ class TelaBatalha(TelaBase):
 
         letra = self.fonte_menu.render(tecla, True, cor_letra)
         self.tela.blit(letra, (rect.centerx - letra.get_width() // 2, rect.centery - letra.get_height() // 2 - 1))
+
+    def _draw_popup_inventario(self, tempo):
+        """Desenha o painel do inventário com 5 slots horizontais, pixel art e botão de Usar."""
+        cs = self.combat_state
+
+        # 1. Dimensões do painel principal (Fundo escuro semi-transparente)
+        largura_p, altura_p = 600, 260
+        x_p = (self.largura // 2) - (largura_p // 2)
+        y_p = (self.altura // 2) - (altura_p // 2) - 20
+
+        overlay = pygame.Surface((largura_p, altura_p), pygame.SRCALPHA)
+        overlay.fill((10, 6, 22, 240))  # Roxo muito escuro quase opaco
+        self.tela.blit(overlay, (x_p, y_p))
+        
+        # Borda estilizada para o painel principal
+        # Nota: Se der erro de NameError em AMARELO ou CINZA, troque pelas cores correspondentes do seu arquivo
+        pygame.draw.rect(self.tela, AMARELO, (x_p, y_p, largura_p, altura_p), 3, border_radius=8)
+
+        # Título do Painel
+        titulo = self.fonte_nome.render("🎒 INVENTÁRIO DE ITENS REGIONAIS", True, AMARELO)
+        self.tela.blit(titulo, (self.largura // 2 - titulo.get_width() // 2, y_p + 15))
+
+        # 2. Configurações dos 5 slots (quadradinhos de 80x80)
+        tamanho_slot = 80
+        espacamento = 20
+        # Calcula o X inicial para deixar os 5 blocos perfeitamente centralizados no painel
+        largura_total_slots = (5 * tamanho_slot) + (4 * espacamento)
+        x_inicio_slots = (self.largura // 2) - (largura_total_slots // 2)
+        y_slots = y_p + 60
+
+        for i in range(5):
+            x_slot = x_inicio_slots + i * (tamanho_slot + espacamento)
+            rect_slot = pygame.Rect(x_slot, y_slots, tamanho_slot, tamanho_slot)
+            
+            # Checa se esse quadrado está selecionado pelo jogador para mudar a borda
+            selecionado = (i == cs.inventario_selecionado)
+            
+            # Cor de fundo do quadradinho
+            pygame.draw.rect(self.tela, (20, 15, 35), rect_slot, border_radius=6)
+            
+            if selecionado:
+                # Efeito pulsar dourado no quadrado selecionado usando math.sin
+                pulso = 0.5 + 0.5 * abs(math.sin(tempo * 5))
+                cor_borda = (int(255 * pulso), int(215 * pulso), 0)
+                pygame.draw.rect(self.tela, cor_borda, rect_slot, 3, border_radius=6)
+            else:
+                pygame.draw.rect(self.tela, CINZA, rect_slot, 1, border_radius=6)
+
+            # Se existir um item nesse slot, vamos desenhá-lo
+            if i < len(cs.inventario):
+                item = cs.inventario[i]
+                nome_item_min = item.get("nome", "").lower()
+                
+                # Resgata a pixel art correspondente carregada no dicionário imagens_itens
+                img_item = None
+                if "gin" in nome_item_min: img_item = self.imagens_itens.get("gin")
+                elif "tapioca" in nome_item_min: img_item = self.imagens_itens.get("tapioca")
+                elif "bolo" in nome_item_min: img_item = self.imagens_itens.get("bolo")
+                elif "axe" in nome_item_min or "axé" in nome_item_min: img_item = self.imagens_itens.get("axe")
+                elif "cartola" in nome_item_min: img_item = self.imagens_itens.get("cartola")
+
+                if img_item:
+                    # Centraliza a pixel art dentro do slot
+                    x_img = x_slot + (tamanho_slot // 2) - (img_item.get_width() // 2)
+                    y_img = y_slots + (tamanho_slot // 2) - (img_item.get_height() // 2)
+                    self.tela.blit(img_item, (x_img, y_img))
+
+                #Informações do item (Texto com Atributo "+25 HP") abaixo do quadrado
+                tipo_item = item.get("tipo", "")
+                valor_item = item.get("valor", 0)
+                txt_info = ""
+                cor_info = BRANCO
+                
+                if tipo_item == "cura":
+                    txt_info = f"+{valor_item} HP"
+                    cor_info = VERDE
+                elif tipo_item == "duplica_dano":
+                    txt_info = "2X DANO"
+                    cor_info = LARANJA
+                elif tipo_item == "tempo_extra":
+                    txt_info = f"+{valor_item}s"
+                    cor_info = AZUL_CLARO
+
+                surf_info = self.fonte_codigo.render(txt_info, True, cor_info)
+                self.tela.blit(surf_info, (x_slot + (tamanho_slot // 2) - (surf_info.get_width() // 2), y_slots + tamanho_slot + 6))
+                
+                #Botão "USAR" logo abaixo do atributo
+                if selecionado:
+                    surf_usar = self.fonte_codigo.render("[ USAR ]", True, AMARELO)
+                else:
+                    surf_usar = self.fonte_codigo.render("  usar  ", True, CINZA)
+                self.tela.blit(surf_usar, (x_slot + (tamanho_slot // 2) - (surf_usar.get_width() // 2), y_slots + tamanho_slot + 26))
+            else:
+                # Slot Vazio: Mostra apenas um indicador sutil se estiver selecionado
+                if selecionado:
+                    surf_vazio = self.fonte_codigo.render("[ VAZIO ]", True, CINZA)
+                    self.tela.blit(surf_vazio, (x_slot + (tamanho_slot // 2) - (surf_vazio.get_width() // 2), y_slots + tamanho_slot + 15))
+
+        # Texto de ajuda no rodapé do popup
+        instrucao = self.fonte_apres_sub.render("← → NAVEGAR   ENTER USAR   TAB FECHAR", True, CINZA)
+        self.tela.blit(instrucao, (self.largura // 2 - instrucao.get_width() // 2, y_p + altura_p - 30))

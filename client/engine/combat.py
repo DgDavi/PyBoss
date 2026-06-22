@@ -93,14 +93,18 @@ class CombatState:
 
         #Release 2: itens da cultura pernambucana, que dão algum bônus para o jogador
         self.itens_pernambucanos = [
-            {"nome": "Bolo de Rolo", "tipo": "cura", "valor": 15, "msg": "Você comeu um bolo de rolo legítimo e ganhou +15 HP!"},
-            {"nome": "Cartola", "tipo": "cura", "valor": 10, "msg": "Cartola! Banana com queijo assado e canela! Ganhou +10 HP!"},
-            {"nome": "Tapioca da Sé", "tipo": "cura", "valor": 25, "msg": "Você subiu o Alto da Sé e comeu uma tapioca! Recuperou +25 HP!"},
-            {"nome": "Gin de 10", "tipo": "duplica_dano", "valor": True, "msg": "Gin de 10! Seu próximo ataque dará o DOBRO de dano!"},
-            {"nome": "Axé", "tipo": "tempo_extra", "valor": 5, "msg": "Um gole de Axé de Olinda! +5 segundos extras na próxima rodada!"}
+            {"nome": "Bolo de Rolo", "tipo": "cura", "valor": 15, "msg": "Você ganhou um delicioso bolo de rolo! Coma para ganhar +15 HP!"},
+            {"nome": "Cartola", "tipo": "cura", "valor": 10, "msg": "Cartola! Banana com queijo assado e canela! Coma para ganhar +10 HP!"},
+            {"nome": "Tapioca da Sé", "tipo": "cura", "valor": 25, "msg": "Você subiu o Alto da Sé e comprou uma tapioca! Coma para recuperar +25 HP!"},
+            {"nome": "Gin de 10", "tipo": "duplica_dano", "valor": True, "msg": "Gin de 10! Beba para DOBRAR seu próximo ataque!"},
+            {"nome": "Axé", "tipo": "tempo_extra", "valor": 5, "msg": "Um gole de Axé de Olinda! +5 segundos extras!"}
         ]
         self.proximo_dano_duplicado = False
         self.tempo_bonus_proxima_rodada = 0.0
+
+        #Release 2: Inventário
+        self.inventario = []
+        self.inventario_selecionado = 0
 
         # A questão só é carregada quando a apresentação terminar
 
@@ -189,12 +193,32 @@ class CombatState:
     # ─────────────────────────────────────
 
     def handle_input(self, acao):
+        # Abre ou fecha o inventário com a ação toggle_inventario
+        if acao == "toggle_inventario" and self.fase != "apresentando":
+            if self.fase == "inventario":
+                self.fase = self.fase_anterior if hasattr(self, 'fase_anterior') else "batalha"
+            else:
+                self.fase_anterior = self.fase
+                self.fase = "inventario"
+            return
+
+        # Se a fase for inventário, as ações de navegação mudam
+        if self.fase == "inventario":
+            if acao == "left":
+                self.inventario_selecionado = (self.inventario_selecionado - 1) % 5
+            elif acao == "right":
+                self.inventario_selecionado = (self.inventario_selecionado + 1) % 5
+            elif acao == "confirm":
+                if self.usar_item_selecionado():
+                    self.fase = "batalha"
+            return
+
+        
         if self.fase == "apresentando":
             if acao == "confirm":
                 self.apresentacao_timer = 0.0
             return
 
-        # SE ESTIVER NO POPUP DE DROP: Só aceita o botão de confirmar para fechar
         if self.fase == "popup_drop":
             if acao == "confirm":
                 self.fase = "batalha"
@@ -206,6 +230,7 @@ class CombatState:
         if self.aguardando or self.mensagem_timer > 0 or not self.questao:
             return
 
+       
         if acao == "up":
             self.selecionado = (self.selecionado - 1) % len(self.opcoes)
         elif acao == "down":
@@ -251,25 +276,19 @@ class CombatState:
         self.anim_timer = TIMER_ANIMACAO
         
         
-        if random.random() < 0.30:
-            item = random.choice(self.itens_pernambucanos)
-            self.item_dropado = item
-            #Ativar o popup
-            self.fase = "popup_drop"  
-            
-            # Aplica os bônus do item dropado
-            if item["tipo"] == "cura":
-                self.hero.hp = min(self.hero.max_hp, self.hero.hp + item["valor"])
-            elif item["tipo"] == "duplica_dano":
-                self.proximo_dano_duplicado = True
-            elif item["tipo"] == "tempo_extra":
-                self.tempo_bonus_proxima_rodada = item["valor"]
-        else:
-            # Feedback normal se não dropar nada
-            txt_feedback = f"✓ CORRETO!  COMBO x{self.combo}  +{dano} DANO"
-            self._set_mensagem(txt_feedback, cor=(40, 190, 80))
-            self.aguardando = True
-            self.aguardando_timer = TIMER_AGUARDAR
+        #Itens dropavéis
+        if random.random() < 1.0:
+            if len(self.inventario) < 5:
+                item = random.choice(self.itens_pernambucanos)
+                self.inventario.append(item)
+                self.item_dropado = item
+                self.fase = "popup_drop"  # Abre o popup dizendo que o item foi dropado
+            else:
+                # Inventário cheio, dá o feedback normal de acerto
+                txt_feedback = f"✓ CORRETO! INVENTÁRIO CHEIO  +{dano} DANO"
+                self._set_mensagem(txt_feedback, cor=(40, 190, 80))
+                self.aguardando = True
+                self.aguardando_timer = TIMER_AGUARDAR
         
 
     def _processar_erro(self):
@@ -440,3 +459,25 @@ class CombatState:
         if self.hero.usar_escudo():
             self._set_mensagem("🛡 ESCUDO ATIVADO — próximo erro sem dano!", cor=(80, 160, 255))
         # Se já ativo, silencia (não gasta mana)
+
+    def usar_item_selecionado(self):
+        """Tenta consumir o item selecionado no inventário. Retorna True se usou."""
+        if self.inventario_selecionado >= len(self.inventario):
+            return False 
+
+        # Remove o item do inventário
+        item = self.inventario.pop(self.inventario_selecionado)
+
+        # Aplica o efeito dependendo do item
+        if item["tipo"] == "cura":
+            self.hero.hp = min(self.hero.max_hp, self.hero.hp + item["valor"])
+            self._set_mensagem(f"✨ Usou {item['nome']}! +{item['valor']} HP", cor=(40, 190, 80))
+        elif item["tipo"] == "duplica_dano":
+            self.proximo_dano_duplicado = True # Exemplo de efeito
+            self._set_mensagem(f"⚔️ Usou {item['nome']}! Próximo dano duplicado", cor=(220, 140, 20))
+        elif item["tipo"] == "tempo_extra":
+            self.timer_resposta = min(TEMPO_RESPOSTA, self.timer_resposta + item["valor"])
+            self._set_mensagem(f"⏳ Usou {item['nome']}! +{item['valor']}s de tempo", cor=(80, 160, 255))
+
+        
+        return True

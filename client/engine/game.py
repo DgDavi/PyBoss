@@ -1,5 +1,6 @@
 from viewer import TelaNome, TelaMenu, TelaBatalha, TelaTransicao, TelaGameOver
 from viewer.tela_rank import TelaRanking
+from viewer.tela_como_jogar import TelaComoJogar 
 
 
 class GameManager:
@@ -64,6 +65,9 @@ class GameManager:
 
         elif proximo == "ranking":
             self.tela_atual = TelaRanking(self.tela)
+
+        elif proximo == "como_jogar":
+            self.tela_atual = TelaComoJogar(self.tela)
 
         elif proximo == "game_over":
             cs = self.tela_atual.combat_state

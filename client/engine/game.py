@@ -3,6 +3,7 @@ from viewer.tela_rank import TelaRanking
 from viewer.tela_como_jogar import TelaComoJogar 
 
 
+
 class GameManager:
 
     def __init__(self, tela):
@@ -69,21 +70,51 @@ class GameManager:
         elif proximo == "como_jogar":
             self.tela_atual = TelaComoJogar(self.tela)
 
-        elif proximo == "game_over":
-            cs = self.tela_atual.combat_state
-            pontuacao = cs.maior_combo * 10 + cs.nivel * 50
+        elif proximo == "arcade":
+            from viewer.tela_arcade import TelaArcade
+            self.tela_atual = TelaArcade(self.tela, self.nome_jogador)
 
-            # salvar no banco
+        elif proximo == "game_over":
+            from viewer.tela_arcade import TelaArcade
+            cs = self.tela_atual.combat_state
+        
+            if isinstance(self.tela_atual, TelaArcade):
+               
+                pontuacao = (cs.maior_combo * 10) + (cs.bosses_derrotados * 200)
+                
+                stats_final = {
+                    "modo": "arcade",
+                    "bosses": cs.bosses_derrotados,
+                    "maior_combo": cs.maior_combo,
+                    "temas_errados": getattr(cs, 'temas_errados', []) 
+                }
+               
+                self.tela_atual = TelaGameOver(self.tela, pontuacao=pontuacao, relatorio_ia="", stats=stats_final)
+            
+           
+            else:
+                pontuacao = cs.maior_combo * 10 + cs.nivel * 50
+                
+                stats_final = {
+                    "modo": "jornada",
+                    "bosses": cs.bosses_derrotados,
+                    "temas_errados": getattr(cs, 'temas_errados', [])
+                }
+                
+                relatorio = getattr(self.tela_atual, 'relatorio_ia', "")
+                self.tela_atual = TelaGameOver(self.tela, pontuacao=pontuacao, relatorio_ia=relatorio, stats=stats_final)
+
+            
             from backend.database import salvar_pontuacao
             try:
                 salvar_pontuacao(self.nome_jogador if self.nome_jogador else "Alquimista", pontuacao)
             except Exception as e:
                 print(f"[SQLITE] Erro ao salvar pontuação: {e}")
 
-            # stats sempre definido antes do try
+           
             stats_reais = cs.get_stats_finais()
 
-            # gerar relatório via IA
+           
             from backend.ai_service import gerar_relatorio
             try:
                 relatorio_ia = gerar_relatorio(stats_reais)

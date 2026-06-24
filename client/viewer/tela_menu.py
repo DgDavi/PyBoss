@@ -1,3 +1,5 @@
+# client/viewer/tela_menu.py
+
 import pygame
 import math
 from viewer.base import TelaBase, AMARELO, CINZA, VERMELHO, ROXO
@@ -10,12 +12,14 @@ class TelaMenu(TelaBase):
         super().__init__(tela)
         self.nome_jogador = nome_jogador
         
-        self.opcoes       = ["JOGAR", "COMO JOGAR", "RANKING"]
+        
+        self.opcoes       = ["MODO JORNADA", "MODO ARCADE", "COMO JOGAR", "RANKING"]
         self.selecionado  = 0
 
         self.fonte_titulo = pygame.font.SysFont("arialblack", 64)
         self.fonte_nome   = pygame.font.SysFont("arialblack", 22)
-        self.fonte_menu   = pygame.font.SysFont("arialblack", 36)
+        
+        self.fonte_menu   = pygame.font.SysFont("arialblack", 32)
 
     def handle_event(self, evento):
         if evento.type == pygame.KEYDOWN:
@@ -24,12 +28,15 @@ class TelaMenu(TelaBase):
             elif evento.key == pygame.K_DOWN:
                 self.selecionado = (self.selecionado + 1) % len(self.opcoes)
             elif evento.key == pygame.K_RETURN:
+                
                
                 if self.selecionado == 0:
-                    self.proximo = "batalha"
+                    self.proximo = "batalha"       
                 elif self.selecionado == 1:
-                    self.proximo = "como_jogar"
+                    self.proximo = "arcade"        
                 elif self.selecionado == 2:
+                    self.proximo = "como_jogar"
+                elif self.selecionado == 3:
                     self.proximo = "ranking"
 
     def draw(self):
@@ -63,16 +70,14 @@ class TelaMenu(TelaBase):
         self.tela.blit(saudacao, (self.largura // 2 - saudacao.get_width() // 2, 176))
 
     def _menu(self, tempo):
-       
-        y_inicio = 240
-        espacamento = 85
-        alt_box = 56  
+        y_inicio = 225
+        espacamento = 75
+        alt_box = 52  
 
         for i, opcao in enumerate(self.opcoes):
             selecionado = (i == self.selecionado)
             y_centro_opcao = y_inicio + i * espacamento
 
-            
             if selecionado:
                 cor_texto = AMARELO
             else:
@@ -80,7 +85,7 @@ class TelaMenu(TelaBase):
             texto = self.fonte_menu.render(opcao, True, cor_texto)
 
             
-            larg_box = 320
+            larg_box = 380
             x_box = self.largura // 2 - larg_box // 2
             y_box = y_centro_opcao - (alt_box // 2)
             caixa = pygame.Rect(x_box, y_box, larg_box, alt_box)
@@ -91,19 +96,15 @@ class TelaMenu(TelaBase):
                 pygame.draw.rect(self.tela, cor_fundo, caixa)
                 pygame.draw.rect(self.tela, AMARELO, caixa, 2)
 
-           
             x_texto = caixa.x + (caixa.width // 2) - (texto.get_width() // 2)
             y_texto = caixa.y + (caixa.height // 2) - (texto.get_height() // 2)
             self.tela.blit(texto, (x_texto, y_texto))
 
-            
             if selecionado and int(tempo * 4) % 2 == 0:
                 cursor = self.fonte_menu.render("►", True, AMARELO)
                 y_cursor = caixa.y + (caixa.height // 2) - (cursor.get_height() // 2)
                 self.tela.blit(cursor, (caixa.x - 40, y_cursor))
 
-        
-        y_inst = y_inicio + len(self.opcoes) * espacamento - 20
-        
-        inst = self.fonte_name.render("↑↓ NAVEGAR   ENTER CONFIRMAR", True, CINZA) if hasattr(self, 'fonte_name') else self.fonte_nome.render("↑↓ NAVEGAR   ENTER CONFIRMAR", True, CINZA)
+        y_inst = y_inicio + len(self.opcoes) * espacamento
+        inst = self.fonte_nome.render("↑↓ NAVEGAR   ENTER CONFIRMAR", True, CINZA)
         self.tela.blit(inst, (self.largura // 2 - inst.get_width() // 2, y_inst))

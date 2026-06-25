@@ -219,11 +219,13 @@ Isso permite acompanhar sua evolução e disputar as melhores posições.
 # 🎮 Controles
 
 | Tecla | Ação |
-|--------|--------|
-| ↑ / ↓ | Navegar entre alternativas |
+| ------- | -------- |
+| ↑ / ↓ | Navegar entre alternativas na batalha |
 | ENTER | Confirmar resposta |
-| ESPAÇO | Confirmar resposta |
-| R | Retornar ao menu após derrota |
+| ESPAÇO | Confirmar resposta ou uso de item |
+| TAB | Abrir ou fechar o inventário |
+| ← / → | Navegar pelos itens do inventário |
+| R | Retornar ao menu após a derrota |
 
 ---
 

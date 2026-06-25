@@ -229,6 +229,28 @@ Isso permite acompanhar sua evolução e disputar as melhores posições.
 
 ---
 
+# 🆕 Novidades da Segunda Release
+
+## Correção de bugs e elementos das telas
+
+## Opção de "Como Jogar" no menu principal
+
+## Implementação de um sistema de drops de itens
+Mecânica de recompensa ativa: ao acertar uma pergunta, o jogador tem 30% de chance de receber um item consumível baseado na temática de alimentos regionais pernambucanos.
+
+## Criação de janela pop-up de aviso
+Quando um consumível é coletado, um pop-up trava a gameplay para notificar o jogador sobre o item recebido e seus efeitos. O fluxo do jogo só é retomado após o usuário pressionar a tecla ENTER para fechar a janela.
+
+## Implementação do sistema de inventário
+Desenvolvimento de um inventário dinâmico que armazena no máximo 5 itens.
+
+## Criação do novo modo de jogo: Arcade
+Introdução de um modo competitivo focado em velocidade, com uma corrida contra o tempo baseada em um relógio de 120 segundos e inicialização direta nos combates com os Bosses.
+
+
+
+---
+
 # 📂 Estrutura do Projeto
 
 ```text

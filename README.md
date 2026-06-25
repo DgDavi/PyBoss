@@ -26,6 +26,15 @@
 ## Relatório Inteligente
 ![Relatório Inteligente](client/assets/images/relatoriointeligente.png)
 
+## Modo Arcade
+![Modo Arcade](client/assets/images/modoarcade.png)
+
+## Sistema de Drops
+![Sistema de Drops](client/assets/images/drop.png)
+
+## Inventário de Itens
+![Inventário de Itens](client/assets/images/inventario.png)
+
 # 🎯 Sobre o Jogo
 
 PyBoss é um jogo educativo desenvolvido com **Python** e **Pygame** que transforma o aprendizado da linguagem em uma experiência de RPG.

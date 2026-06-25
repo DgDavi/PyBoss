@@ -62,7 +62,7 @@ class TelaArcade(TelaBatalha):
         
         minutos = int(cs.tempo_global // 60)
         segundos = int(cs.tempo_global % 60)
-        tempo_formatado = f"DOCKING TIME: {minutos:02d}:{segundos:02d}"
+        tempo_formatado = f"TEMPO RESTANTE: {minutos:02d}:{segundos:02d}"
         
         if cs.tempo_global > 60:
             cor_relogio = AZUL_HUD
